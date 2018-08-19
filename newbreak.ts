@@ -4,6 +4,10 @@ export class Node {
   public width: number;
   public stretch?: number;
   public shrink?: number;
+  public breakHereWidth?: number;
+  public breakHereStretch?: number;
+  public breakHereShrink?: number;
+  public breakHereText?: string;
   public text?: string;
   originalIndex?: number;
 }
@@ -13,70 +17,6 @@ interface BreakpointSet {
   totalBadness: number;
 }
 
-var nodelist = [
- { "text":"To", breakClass: 0, penalty: 0, width: 10.14648 } as Node,
- { width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "Sherlock", breakClass: 0, penalty: 0, width: 35.82031 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "Holmes", breakClass: 0, penalty: 0, width: 30.79102 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "she", breakClass: 0, penalty: 0, width: 13.99902 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "is", breakClass: 0, penalty: 0, width: 6.57227 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "always", breakClass: 0, penalty: 0, width: 27.59766 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "the", breakClass: 0, penalty: 0, width: 13.5791 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "woman", breakClass: 0, penalty: 0, width: 32.37305 } as Node,
-{ width: 2.93619, stretch: 3.30322, shrink: 0.24467, breakClass: 1, penalty:0 } as Node,
- { text: "I", breakClass: 0, penalty: 0, width: 2.97852 } as Node,
-{ width: 2.20215, stretch: 1.09996, shrink: 0.73477, breakClass: 1, penalty:0 } as Node,
- { text: "have", breakClass: 0, penalty: 0, width: 19.26758 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "seldom", breakClass: 0, penalty: 0, width: 29.45313 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "heard", breakClass: 0, penalty: 0, width: 23.78906 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "him", breakClass: 0, penalty: 0, width: 16.25977 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "mention", breakClass: 0, penalty: 0, width: 34.86816 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "her", breakClass: 0, penalty: 0, width: 14.09668 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "under", breakClass: 0, penalty: 0, width: 24.59473 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "any", breakClass: 0, penalty: 0, width: 15.03906 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "other", breakClass: 0, penalty: 0, width: 22.56836 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "name", breakClass: 0, penalty: 0, width: 25.04883 } as Node,
-{ width: 2.93619, stretch: 3.30322, shrink: 0.24467, breakClass: 1, penalty:0 } as Node,
- { text: "In", breakClass: 0, penalty: 0, width: 8.4961 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "his", breakClass: 0, penalty: 0, width: 12.08984 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "eyes", breakClass: 0, penalty: 0, width: 17.83691 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "she", breakClass: 0, penalty: 0, width: 13.99902 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "eclipses", breakClass: 0, penalty: 0, width: 31.9043 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "and", breakClass: 0, penalty: 0, width: 15.30762 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "predominates", breakClass: 0, penalty: 0, width: 56.7334 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "the", breakClass: 0, penalty: 0, width: 13.5791 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "whole", breakClass: 0, penalty: 0, width: 24.93652 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "of", breakClass: 0, penalty: 0, width: 8.13965 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "her", breakClass: 0, penalty: 0, width: 14.09668 } as Node,
-{ width: 2.20215, stretch: 1.10107, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
- { text: "sex.", breakClass: 0, penalty: 0, width: 15.6543 } as Node,
-{ width: 2.20215, stretch: 10000, shrink: 0.73404, breakClass: 1, penalty:0 } as Node,
-];
 
 const INF_BAD = 10000;
 const LINE_PENALTY = 10;
@@ -93,7 +33,7 @@ class Linebreaker {
     this.nodes.push({ width:0, breakClass:1} as Node)
     this.memoizeCache = {}
   }
-  private debug(msg) { console.log(msg) }
+  private debug(msg) { }; // console.log(msg) }
   public doBreak () {
     let maxBreakClass = Math.max( ...this.nodes.map( x => x.breakClass) );
     for (let i = maxBreakClass; i>0; i--) {
@@ -132,11 +72,14 @@ class Linebreaker {
   }
 
   private badnessFunction (t,s) {
-    let bad = Math.floor(100 * (t/s)^3)
-    return bad > INF_BAD ? INF_BAD : bad;
+    if (t==0) return 0;
+    let bad = Math.floor(100 * (t/(s))**3)
+    // return bad > INF_BAD ? INF_BAD : bad;
+    return bad;
   }
 
   private computeBadness(shortfall: number, stretch: number, shrink: number) {
+    this.debug(`Shortfall: ${shortfall}, stretch: ${stretch}, shrink: ${shrink}`)
     if (shortfall > 0) {
       if (shortfall > 110 && stretch < 25) { return INF_BAD }
       else { return this.badnessFunction(shortfall, stretch) }
@@ -150,30 +93,40 @@ class Linebreaker {
   public findBreakpoints(lineNo: number, options: any) : BreakpointSet {
     let relevant = this.findRelevantNodes(options.class, options.start, options.end);
     let key = JSON.stringify(options)
-    if (key in this.memoizeCache) { return this.memoizeCache[key] }
     let target = this.hsize[lineNo > this.hsize.length-1 ? this.hsize.length-1 : lineNo]
-    console.log(`Looking for breakpoints ${options.start}->${options.end} to fill ${target}`)
+    this.debug(`Looking for breakpoints ${options.start}->${options.end} to fill ${target}`)
+    if (key in this.memoizeCache) {return this.memoizeCache[key] }
     let curWidth = 0;
     let curStretch = 0;
     let curShrink = 0;
     let considerations = [] as BreakpointSet[];
     let minTotalBadness = Infinity;
-    for (let i = 1; i< relevant.length; i++) {
+    for (let i = 0; i< relevant.length; i++) {
       let thisNode = relevant[i]
+      this.debug(`Adding width ${thisNode.width} for node`)
+      curWidth += thisNode.width;
+      curStretch += thisNode.stretch || 0;
+      curShrink += thisNode.shrink || 0;
+
       if (thisNode.breakClass >= options.class) {
+        if (thisNode.breakHereWidth) {
+          curWidth += thisNode.breakHereWidth; curShrink += thisNode.breakHereShrink||0; curStretch += thisNode.breakHereStretch||0;
+        }
         let badness = this.computeBadness(target-curWidth, curStretch, curShrink);
+        this.debug(`Baseness was ${badness}`)
         let d = (badness + LINE_PENALTY);
-        d = d * d * d;
+        if (Math.abs(d) >= 10000) { d = 100000000} else { d = d * d }
+        if (thisNode.penalty) { d += thisNode.penalty * thisNode.penalty }
         // More demerits here. For now:
         badness = d;
-        // this.debug(`Node ${i} is possible, badness = ${badness}`)
+        this.debug(`Node ${i} is possible, badness = ${badness}`)
         if (badness < minTotalBadness) {
           considerations.push({
             totalBadness: badness,
             points: [ thisNode.originalIndex ]
           })
           // Recurse!
-          // this.debug(`Recursing, now start at ${thisNode.originalIndex+1}`)
+          this.debug(`Recursing, now start at ${thisNode.originalIndex+1}`)
           let recursed = this.findBreakpoints(lineNo+1, {
             class: options.class,
             start: thisNode.originalIndex+1,
@@ -185,28 +138,68 @@ class Linebreaker {
             minTotalBadness = considerations[considerations.length-1].totalBadness
           }
         }
+        if (thisNode.breakHereWidth) {
+          curWidth -= thisNode.breakHereWidth; curShrink -= thisNode.breakHereShrink||0; curStretch -= thisNode.breakHereStretch||0;
+        }
       }
-      curWidth += thisNode.width;
-      curStretch += thisNode.stretch || 0;
-      curShrink += thisNode.shrink || 0;
     }
     if (considerations.length < 1) {
       return { totalBadness:0, points: [] } as BreakpointSet;
     }
     // Find the best of the considerations and return it
-    let best = considerations.reduce( (a, b) => a.totalBadness < b.totalBadness ? a : b );
-    this.debug(`Best answer for ${key} was: ${best.points} with badness ${best.totalBadness}`)
+    this.debug("Considerations: ")
+    this.debug(considerations)
+    let best = considerations.reduce( (a, b) => a.totalBadness <= b.totalBadness ? a : b );
+    this.debug(`Best answer for ${key} was: ${best.points}`)
+    this.debugConsideration(options, best.points)
+    this.debug(` with badness ${best.totalBadness}`)
     this.memoizeCache[key] = best;
     return best
   }
+
+  private debugConsideration(options, origpoints) {
+    let lines = [""]
+    this.debug("---")
+    let points = origpoints.slice(0)
+    for (let i= 0; i < this.nodes.length; i++) {
+      lines[lines.length-1] += this.nodes[i].text || (this.nodes[i].width>0?" ":"");
+      if (i == points[0]) {
+        if (this.nodes[i].breakHereText) { lines[lines.length-1] += this.nodes[i].breakHereText}
+        points.shift();
+        lines.push("");
+      }
+    }
+    for (let l of lines) { this.debug(l) }
+    this.debug("---")
+  }
 }
 
-let breaker = new Linebreaker(nodelist, [180])
+function makeNodeList(text): Node[] {
+  let rv = []
+  for (let t of text.split(/(\s+)/)) {
+    if (t.match(/\s+/)) {
+      rv.push({penalty: 0,breakClass: 1, width: 1, stretch: 1, shrink:0 } as Node);
+    } else {
+      for (let frag of t.split(/(-)/)) {
+        if (frag == "-") {
+          rv.push({text:"", breakHereText: "-", width:0, breakHereWidth:1, breakClass:1} as Node);
+        } else {
+          rv.push({ text: frag, breakClass:0, penalty:0, width: frag.length, stretch:0, shrink:0 } as Node);
+        }
+      }
+    }
+  }
+  return rv;
+}
+
+let nodelist = makeNodeList("To Sher-lock Holmes she is al-ways 'the woman'. I have sel-dom heard him men-tion her under any other name. In his eyes she ec-lipses and pre-domi-nates the whole of her sex.")
+let breaker = new Linebreaker(nodelist, [22])
 let answer = breaker.doBreak()
 let lines = [""]
 for (let i= 0; i < nodelist.length; i++) {
-  lines[lines.length-1] += nodelist[i].text || " ";
+  lines[lines.length-1] += nodelist[i].text || (nodelist[i].width>0?" ":"");
   if (i == answer[0]) {
+    if (nodelist[i].breakHereText) { lines[lines.length-1] += nodelist[i].breakHereText}
     answer.shift();
     lines.push("");
   }
