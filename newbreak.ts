@@ -83,7 +83,6 @@ export class Linebreaker {
     if (t==0) return 0;
     let bad = Math.floor(100 * (t/s)**3)
     return bad > INF_BAD ? INF_BAD : bad;
-    // return bad;
   }
 
   private computeBadness(shortfall: number, stretch: number, shrink: number, lineNo: number) {
@@ -167,26 +166,13 @@ export class Linebreaker {
           if (thisNode.originalIndex+1 < options.end) {
             this.debug(`Recursing, now start at ${thisNode.originalIndex+1}`, lineNo)
             let oldDebug = this.debugging
-            // this.debugging = false
             let recursed = this.findBreakpoints(lineNo+1, {
               class: options.class,
               start: thisNode.originalIndex+1,
               end: options.end,
             })
-            // this.debugging = oldDebug
             this.debug(`In that recursion, total badness = ${recursed.totalBadness}`)
-            // var me = considerations.pop()
-
-            // for (let newConsideration of recursed) {
-            //     considerations.push({
-            //       totalBadness: me.totalBadness + newConsideration.totalBadness,
-            //       points: [].concat(me.points,newConsideration.points)
-            //     })
-            // }
-            // this.debug("Considerations after that recursion: ", lineNo)
-            // this.debug(considerations, lineNo)
             considerations[considerations.length-1].points = considerations[considerations.length-1].points.concat(recursed.points);
-            // considerations[considerations.length-1].totalBadness += recursed.totalBadness;
             if (considerations[considerations.length-1].totalBadness < minTotalBadness) {
               minTotalBadness = considerations[considerations.length-1].totalBadness
             }
@@ -266,23 +252,4 @@ export class Linebreaker {
     rv.pop()
     return rv
   }
-}
-
-function makeNodeList(text): Node[] {
-  let rv = []
-  for (let t of text.split(/(\s+)/)) {
-    if (t.match(/\s+/)) {
-      rv.push({penalty: 0,breakClass: 1, width: 1, stretch: 1, shrink:0 } as Node);
-    } else {
-      for (let frag of t.split(/(-)/)) {
-        if (frag == "-") {
-          rv.push({text:"", breakHereText: "-", width:0, breakHereWidth:1, breakClass:1} as Node);
-        } else {
-          rv.push({ text: frag, breakClass:0, penalty:0, width: frag.length, stretch:0, shrink:0 } as Node);
-        }
-      }
-    }
-  }
-  rv.push({penalty: 0,breakClass: 1, width: 0, stretch: 1000, shrink:0 } as Node);
-  return rv;
 }
