@@ -12,13 +12,11 @@ function changeFont(font) {
             }
             else {
                 d = new dombreak_1.DomBreak($("#testbox"), { textLetterSpacingPriority: 0.25 });
-                $(".slidecontainer").show();
             }
         }
     });
 }
 changeFont("Encode Sans");
-$(".slidecontainer").hide();
 $("select").on("change", function (e) {
     changeFont($(e.target).val());
 });
