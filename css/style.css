@@ -1,15 +1,24 @@
 @font-face {
-  src: url('AvenirNext_Variable.woff2');
-  font-family:'Avenir Next Variable';
+  src: url('EncodeSans-VF.ttf');
+  font-family:'Encode Sans';
   font-style: normal;
 }
 
-
+.controls {
+  float:right; width:350px; display:block;
+  line-height: 1.5em;
+  font-family: sans-serif;
+  background-color: #dfdfdf;
+  padding: 15px;
+}
+small { color: #333; }
 
 span.glue { display: inline-block }
 div.nowrap { white-space: nowrap }
 div#testbox {
-  font-family: "Skia"; line-height: 1.2em;
+  font-family: "Encode Sans", "Skia"; line-height: 1.2em;
   font-size: 24px;
   width: 420px; border:2px solid #666; padding:5px;
 }
+
+label { display: inline-block; width: 170px; }
