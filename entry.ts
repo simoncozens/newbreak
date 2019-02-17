@@ -1,13 +1,46 @@
 // Just an entry point to the typescript bundle.
 
-import { addBreaker } from "./dombreak";
+import { DomBreak } from "./dombreak";
 
-// We have to do this on a click because it needs to measure
-// the width of the characters to make its various nodes, and
-// that can only be done when the font is fully loaded and
-// rendered.
-// How do we know when the rendering is finished?  \_(ツ)_/¯
-// So we make the user click a button instead.
-$("#go").click(function() {
-  addBreaker($("#testbox"));
+var d: DomBreak;
+
+function changeFont(font) {
+  $("div#testbox").css("font-family", font)
+  window["fontSpy"](font, {
+    success: function() {
+      if (d) {
+        d.rebuild()
+      } else {
+        d = new DomBreak($("#testbox"), {textLetterSpacingPriority: 0.25});
+        $(".slidecontainer").show()
+      }
+    }
+  })
+}
+
+changeFont("Encode Sans");
+
+$(".slidecontainer").hide()
+$("select").on("change", (e) => {
+  changeFont($(e.target).val());
+})
+
+$(".slidecontainer input").on("input", (e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  var v = (input.val() as number) / 100.0
+  $(`#${id}Value`).text(v);
+});
+
+$(".slidecontainer input").change((e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  if (id == "hyphenate") {
+    d.options.hyphenate = !!input.prop('checked');
+  } else {
+    var v = (input.val() as number) / 100.0
+    $(`#${id}Value`).text(v);
+    d.options[id] = v;
+  }
+  d.rebuild();
 })

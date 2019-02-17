@@ -8,16 +8,63 @@
         <link rel="stylesheet" href="css/style.css">
         <link rel="author" href="humans.txt">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="src/jQuery-FontSpy.js"></script>
         <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     </head>
     <body>
 
+
+<div class="controls">
+<div class="slidecontainer">
+  <label>Font</label>
+  <select id="fontselect">
+    <option name="Skia">Skia</option>
+    <option name="Encode Sans" selected>Encode Sans</option>
+  </select>
+</div>
+<div class="slidecontainer">
+  <label>Maximum space stretch:</label>
+  <input type="range" min="0" max="500" value="150" class="slider" id="spaceStretch">
+  <span id="spaceStretchValue">1.5</span>
+</div>
+<div class="slidecontainer">
+  <label>Maximum space shrink:</label>
+  <input type="range" min="0" max="100" value="20" class="slider" id="spaceShrink">
+  <span id="spaceShrinkValue">0.20</span>
+</div>
+<div class="slidecontainer">
+  <label>Maximum text stretch:</label>
+  <input type="range" min="0" max="100" value="10" class="slider" id="textStretch">
+  <span id="textStretchValue">0.10</span>
+</div>
+<div class="slidecontainer">
+  <label>Maximum text shrink:</label>
+  <input type="range" min="0" max="100" value="10" class="slider" id="textShrink">
+  <span id="textShrinkValue">0.10</span>
+</div>
+<div class="slidecontainer">
+  <label>Maximum letterspacing (px):</label>
+  <input type="range" min="0" max="200" value="0" class="slider" id="textLetterSpacing">
+  <span id="textLetterSpacingValue">0</span>
+</div>
+<div class="slidecontainer">
+  <label>Letterspacing priority:</label>
+  <input type="range" min="0" max="100" value="25" class="slider" id="textLetterSpacingPriority">
+  <span id="textLetterSpacingPriorityValue">0.25</span>
+  <br><small>
+  (0 = justify exclusively with width axis, 1 = justify exclusively with letterspacing)</small>
+</div>
+<div class="slidecontainer">
+  <label>Hyphenate:</label>
+  <input type="checkbox" id="hyphenate">
+</div>
+</div>
+
 <div id="testbox">
   To Sherlock Holmes she is always "the woman". I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind. He was, I take it, the most perfect reasoning and observing machine that the world has seen, but as a lover he would have placed himself in a false position.
 </div>
 
-<input type="submit" id="go" value="Launch">
         <script src="src/hyphenator-en.js"></script>
         <script src="src/hyphenator.js"></script>
         <script src="src/bundle.js"></script>

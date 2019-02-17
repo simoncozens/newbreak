@@ -376,7 +376,6 @@ export class Linebreaker {
     // Copy the pointset so we can modify it.
     var ps = [...pointSet]
     for (var i = 0; i < this.nodes.length; i++) {
-      console.log(`Looking for node ${ps[0]}, at node ${i}`)
       let target = this.targetFor(lineNo)
       if (ps[0] == i || i == this.nodes.length-1) {
         // We're at a breakpoint.

@@ -14,130 +14,172 @@ function textWidth (text:string, font) {
     return fakeEl.width();
 };
 
-// When we need to make a space character, turn it into a stretchy
-// node. Break class is one, and we can stretch by 100% and shrink by 20%
-// of the space's width.
-function makeGlue(domnode) {
-  var sp = $("<span/>")
-  sp.addClass("glue")
-  // Because it's hard to measure a space directly we have to do a bit of
-  // messing about to work out the width.
-  sp.width(textWidth("x x", domnode.css("font"))-textWidth("xx",domnode.css("font")))
-  let n:Node = {
-    text: sp,
-    penalty: 0,
-    breakClass: 1,
-    width: sp.width(),
-    stretch: 1 * sp.width(),
-    shrink:0.2 * sp.width()
-  } as Node;
-  return n;
+interface DomBreakOptions {
+  spaceStretch?: number,
+  spaceShrink?: number,
+  textStretch?: number,
+  textShrink?: number,
+  textLetterSpacing?: number,
+  textLetterSpacingPriority?: number,
+  hyphenate?: boolean,
+  colorize?: boolean
 }
 
-// A hyphen is an empty node, but with discretionary width and text.
-// It can't stretch.
-function makeHyphen(domnode) {
-  var width = textWidth("-", domnode.css("font"))
-
-  var sp1 = $("<span/>")
-  sp1.addClass("hyphen");
-  return {
-    text:sp1,
-    breakHereText: "-",
-    width:0,
-    breakHereWidth: width,
-    breakClass:2
-  } as Node;
-}
-
-// Text nodes can't break, but they can stretch by 10% and shrink by 40%.
-// These hard-coded values are just for effect.
-function makeText(t, domnode) {
-  var sp = $("<span/>");
-  sp.addClass("text")
-  sp.text(t);
-  var width = textWidth(t, domnode.css("font"))
-  sp.attr("width", width);
-  return {
-    text: sp,
-    breakClass:0,
-    penalty:0,
-    width: width,
-    stretch:0.10*width,
-    shrink:0.40*width
-  } as Node;
+var defaultOptions: DomBreakOptions = {
+  spaceStretch: 1.00,
+  spaceShrink:  0.20,
+  textStretch:  0.10,
+  textShrink:   0.40,
+  textLetterSpacing: 0,
+  textLetterSpacingPriority: 0,
+  hyphenate: false,
+  colorize: true
 }
 
 declare var Hyphenator: any;
-var h = new Hyphenator();
-function hyphenate(t) {
-  // Uncomment the following line if you want to use hyphenation.
-  // return h.hyphenate(t);
-  // But the effect of the justification is more visible if you don't,
-  // so I am choosing not to. It's more fun.
-  return [t];
-}
 
-// This makes a DOM node justified using the newbreak algorithm.
-export function addBreaker(domnode: JQuery<HTMLElement>) {
-  console.log("Addbreaker called");
+export class DomBreak {
+  public options: DomBreakOptions;
+  public nodelist: Node[];
+  public origText: string;
+  public domNode: JQuery<HTMLElement>;
+
+  constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
+    this.options = {...options, ...defaultOptions};
+    this.domNode = domnode;
+    this.origText = domnode.text();
+    this.origText = this.origText.replace(/^\s+/,"")
+    this.rebuild();
+  }
+
+  public rebuild () {
+    this.nodelist = this.textToNodes(this.domNode, this.origText);
+    let doResize = (evt, ui) => { this.layout() }
+    if (this.domNode.resizable( "instance" )) {
+      this.domNode.resizable("destroy");
+    }
+    setTimeout(() => {
+      this.domNode.resizable({resize: doResize });
+      doResize(null,null);
+    },0.1);
+  }
+
+  public makeGlue(domnode) : Node {
+    var sp = $("<span/>")
+    sp.addClass("glue")
+    // Because it's hard to measure a space directly we have to do a bit of
+    // messing about to work out the width.
+    sp.width(textWidth("x x", domnode.css("font"))-textWidth("xx",domnode.css("font")))
+    return {
+      text: sp,
+      penalty: 0,
+      breakClass: 1,
+      width: sp.width(),
+      stretch: this.options.spaceStretch * sp.width(),
+      shrink:  this.options.spaceShrink  * sp.width()
+    } as Node;
+  }
+
+  // A hyphen is an empty node, but with discretionary width and text.
+  // It can't stretch.
+  public makeHyphen(domnode): Node {
+    var width = textWidth("-", domnode.css("font"))
+
+    var sp1 = $("<span/>")
+    sp1.addClass("hyphen");
+    return {
+      text:sp1,
+      breakHereText: "-",
+      width:0,
+      breakHereWidth: width,
+      breakClass:1
+    } as Node;
+  }
+
+  public makeText(t :string, domnode) {
+    var sp = $("<span/>");
+    sp.addClass("text")
+    sp.text(t);
+    var length = t.length;
+    var width = textWidth(t, domnode.css("font"))
+    var maximumLSavailable = (length-1) * this.options.textLetterSpacing
+    var maximumVarfontStretchAvailable = this.options.textStretch * width
+    var stretch = maximumLSavailable * this.options.textLetterSpacingPriority + maximumVarfontStretchAvailable * (1-this.options.textLetterSpacingPriority)
+    sp.attr("width", width);
+    return {
+      text: sp,
+      breakClass:0,
+      penalty:0,
+      width: width,
+      stretch: stretch,
+      shrink: this.options.textShrink * width
+    } as Node;
+  }
+
+  private hyphenator: any;
+  public hyphenate(t) {
+    if (this.options.hyphenate) {
+      if (!this.hyphenator) { this.hyphenator = new Hyphenator() }
+      return this.hyphenator.hyphenate(t);
+    }
+    return [t];
+  }
 
   // The first job is to create nodes, both in the DOM and
   // newbreak `Node` objects, representing each word and space.
-  var text = domnode.text();
-  text = text.replace(/^\s+/,"");
-  // We'll empty the container and tell it that we're handling wrapping.
-  domnode.empty()
-  domnode.addClass("nowrap")
+  public textToNodes(domnode: JQuery<HTMLElement>, text: string) : Node[] {
+    // We'll empty the container and tell it that we're handling wrapping.
+    domnode.empty()
+    domnode.addClass("nowrap")
 
-  var nodelist: Node[] = [];
-  for (let t of text.split(/(\s+)/)) {
-    let n: Node;
-    if (t.match(/\s+/)) {
-      // This is just space. Turn it into a glue node.
-      n = makeGlue(domnode);
-      nodelist.push(n);
-      domnode.append(n.text);
-    }
-    else {
-      // This is text. Turn it into hyphenated fragments.
-      // If hyphenation is off, we just get the text back.
-      let fragments = hyphenate(t) as String[];
-      for (let idx=0; idx < fragments.length; idx++) {
-        var frag = fragments[idx];
-        // Turn each fragment into a `Node`, pop it on the list
-        // and put the word back into the DOM.
-        n = makeText(frag, domnode);
+    var nodelist: Node[] = [];
+    for (let t of text.split(/(\s+)/)) {
+      let n: Node;
+      if (t.match(/\s+/)) {
+        // This is just space. Turn it into a glue node.
+        n = this.makeGlue(domnode);
         nodelist.push(n);
         domnode.append(n.text);
-        if (idx != fragments.length-1) {
-          // Add hyphens between each fragment.
-          n = makeHyphen(domnode);
+      }
+      else {
+        // This is text. Turn it into hyphenated fragments.
+        // If hyphenation is off, we just get the text back.
+        let fragments = this.hyphenate(t) as string[];
+        for (let idx=0; idx < fragments.length; idx++) {
+          var frag = fragments[idx];
+          // Turn each fragment into a `Node`, pop it on the list
+          // and put the word back into the DOM.
+          n = this.makeText(frag, domnode);
           nodelist.push(n);
           domnode.append(n.text);
+          if (idx != fragments.length-1) {
+            // Add hyphens between each fragment.
+            n = this.makeHyphen(domnode);
+            nodelist.push(n);
+            domnode.append(n.text);
+          }
         }
       }
     }
+
+    // At the end of the paragraph we need super-stretchy glue,
+    // else we end up with full-justification.
+    let stretchy = this.makeGlue(domnode);
+    stretchy.stretch = 10000;
+    nodelist.push(stretchy);
+
+    return nodelist;
   }
 
-  // At the end of the paragraph we need super-stretchy glue,
-  // else we end up with full-justification.
-  let stretchy = makeGlue(domnode);
-  stretchy.stretch = 10000;
-  nodelist.push(stretchy);
-
-  // We're going to run the justification algorithm every time
-  // the DOM node gets resized.
-  let doResize = (evt, ui) => {
+  public layout() {
+    var nodelist = this.nodelist;
+    var domnode = this.domNode;
     var breaker = new Linebreaker(nodelist, [domnode.width()])
     var points = breaker.doBreak();
     var ratios = breaker.ratios(points)
 
     // Now we have our breakpoints, we have to actually lay the thing out,
     // which turns out to be the hard bit.
-
-    // Remove any breaks we added on previous times.
-    domnode.find("br").remove()
 
     // Stretch and shrink each node as appropriate. We'll add linebreaks later.
     for (var p = 0; p < nodelist.length-1; p++) {
@@ -160,43 +202,55 @@ export function addBreaker(domnode: JQuery<HTMLElement>) {
 
       // First deal with nodes which need to be shrunk.
       if (ratios[0].ratio < 0 && nodelist[p].shrink > 0) {
-        var shrunk = nodelist[p].width - nodelist[p].shrink * -ratios[0].ratio;
+        var shrinkRequired = nodelist[p].shrink * -ratios[0].ratio
+        var shrunk = nodelist[p].width - shrinkRequired;
         if (el.hasClass("text")) {
           // Text gets shrunk with the variable font CSS rule.
           var shrunkpercent = shrunk / nodelist[p].width * 100
           el.css("font-stretch", shrunkpercent+"%")
-          var redness = (255 - ((shrunkpercent - 75) / 25 * 255)).toFixed(0)
-          el.css("color", "rgb("+redness+",0,0)")
+          el.css("letter-spacing", "normal");
+          if (this.options.colorize) {
+            var redness = ((shrinkRequired/nodelist[p].width) * 4 * 255).toFixed(0)
+            el.css("color", "rgb("+redness+",0,0)")
+          }
         } else {
           // Glue gets shrunk by setting its width directly.
           el.css("width", shrunk+"px")
         }
       } else if (ratios[0].ratio > 0 && nodelist[p].stretch > 0) {
         // And similarly for things which need to be stretched.
-        var stretched = nodelist[p].width + nodelist[p].stretch * ratios[0].ratio;
+        var stretchRequired = nodelist[p].stretch * ratios[0].ratio
+        var stretched = nodelist[p].width + stretchRequired
         if (el.hasClass("text")) {
-          var stretchedpercent = stretched / nodelist[p].width * 100
-          el.css("font-stretch", stretchedpercent+"%")
-          var greenness = (((stretchedpercent - 100) / 25 * 255)).toFixed(0)
-          el.css("color", "rgb(0,"+greenness+",0)")
+          // There are two ways of stretching, so we divide the job
+          // between the two.
+          console.log(` At node ${el.text()}, needed: ${stretchRequired}`)
+          var vfContribution = (1 - this.options.textLetterSpacingPriority) * stretchRequired
+          var lsContribution = (this.options.textLetterSpacingPriority) * stretchRequired
+          console.log(` ls Priority = ${this.options.textLetterSpacingPriority}, Assigning ${vfContribution}px VF, ${lsContribution}px LS`)
+          var lsStretched = lsContribution / (el.text().length-1)
+          var vfStretched = (nodelist[p].width + vfContribution) / nodelist[p].width * 100
+          el.css("font-stretch", (vfStretched)+"%")
+          el.css("letter-spacing", lsStretched+"px")
+          if (this.options.colorize) {
+            var greenness = ((stretchRequired/nodelist[p].width) * 4 * 255).toFixed(0)
+            el.css("color", "rgb(0,"+greenness+",0)")
+          }
         } else {
           el.css("width", stretched+"px")
         }
       } else {
         // On the rare occasion that a line is perfect, reset it to natural.
-        el.css("font-stretch", "")
-        el.css("color", "black")
+        el.css("font-stretch", "");
+        el.css("color", "black");
+        el.css("letter-spacing", "normal");
       }
     }
+    // Remove any breaks we added on previous times.
+    domnode.find("br").remove()
     // Now we add the breaks.
     for (let p of points) {
       (nodelist[p].text as JQuery<HTMLSpanElement>).after($("<br>"))
     }
-    console.log("Ratios:")
-    console.log(ratios)
   }
-  // Hook this up to be run every resize, and once to begin with.
-  domnode.resizable({resize: doResize });
-  doResize(null,null);
-
 }
