@@ -156,6 +156,26 @@ var DomBreak = /** @class */ (function () {
         nodelist.push(stretchy);
         return nodelist;
     };
+    DomBreak.prototype.setToWidth = function (el, width) {
+        var tries = 20;
+        var guess = width / el.width() * 100;
+        var min = 0; // XXX
+        var max = 200; // XXX
+        while (tries--) {
+            el.css("font-stretch", guess + "%");
+            var newWidth = el.width();
+            if (Math.abs(newWidth - width) < 1) {
+                return;
+            }
+            else if (newWidth > width) {
+                max = guess;
+            }
+            else if (newWidth < width) {
+                min = guess;
+            }
+            guess = (min + max) / 2;
+        }
+    };
     DomBreak.prototype.layout = function () {
         var nodelist = this.nodelist;
         var domnode = this.domNode;
@@ -189,7 +209,7 @@ var DomBreak = /** @class */ (function () {
                 if (el.hasClass("text")) {
                     // Text gets shrunk with the variable font CSS rule.
                     var shrunkpercent = shrunk / nodelist[p].width * 100;
-                    el.css("font-stretch", shrunkpercent + "%");
+                    this.setToWidth(el, shrunk);
                     el.css("letter-spacing", "normal");
                     if (this.options.colorize) {
                         var redness = ((shrinkRequired / nodelist[p].width) * 4 * 255).toFixed(0);
@@ -208,13 +228,11 @@ var DomBreak = /** @class */ (function () {
                 if (el.hasClass("text")) {
                     // There are two ways of stretching, so we divide the job
                     // between the two.
-                    console.log(" At node " + el.text() + ", needed: " + stretchRequired);
                     var vfContribution = (1 - this.options.textLetterSpacingPriority) * stretchRequired;
                     var lsContribution = (this.options.textLetterSpacingPriority) * stretchRequired;
-                    console.log(" ls Priority = " + this.options.textLetterSpacingPriority + ", Assigning " + vfContribution + "px VF, " + lsContribution + "px LS");
                     var lsStretched = lsContribution / (el.text().length - 1);
-                    var vfStretched = (nodelist[p].width + vfContribution) / nodelist[p].width * 100;
-                    el.css("font-stretch", (vfStretched) + "%");
+                    // el.css("font-stretch", (vfStretched)+"%")
+                    this.setToWidth(el, nodelist[p].width + vfContribution);
                     el.css("letter-spacing", lsStretched + "px");
                     if (this.options.colorize) {
                         var greenness = ((stretchRequired / nodelist[p].width) * 4 * 255).toFixed(0);
