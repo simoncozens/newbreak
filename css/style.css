@@ -4,6 +4,15 @@
   font-style: normal;
 }
 
+   @font-face {
+            src: url('Fit-VF.woff2') format("woff2"),
+                 url('Fit-VF.woff') format("woff");
+            font-family: 'Fit';
+            font-style: normal;
+            font-weight: normal;
+            font-stretch: 10% 1000%;
+            }
+
 .controls {
   float:right; width:350px; display:block;
   line-height: 1.5em;

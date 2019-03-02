@@ -392,6 +392,7 @@ export class Linebreaker {
         } else {
           rv[rv.length-1].ratio =  shortfall / curShrink
         }
+        this.debug(`Line ${lineNo}: target ${target}, break width ${curWidth} plus ${curStretch} minus ${curShrink}, ratio ${rv[rv.length-1].ratio}`)
         rv[rv.length-1].end = i
 
         // Move onto finding next breakpoint and start again.
