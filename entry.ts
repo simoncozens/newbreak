@@ -12,7 +12,6 @@ function changeFont(font) {
         d.rebuild()
       } else {
         d = new DomBreak($("#testbox"), {textLetterSpacingPriority: 0.25});
-        $(".slidecontainer").show()
       }
     }
   })
@@ -20,7 +19,6 @@ function changeFont(font) {
 
 changeFont("Encode Sans");
 
-$(".slidecontainer").hide()
 $("select").on("change", (e) => {
   changeFont($(e.target).val());
 })
