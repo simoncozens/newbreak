@@ -47,7 +47,7 @@ export class DomBreak {
   public domNode: JQuery<HTMLElement>;
 
   constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
-    this.options = {...options, ...defaultOptions};
+    this.options = {...defaultOptions,...options};
     this.domNode = domnode;
     this.origText = domnode.text();
     this.origText = this.origText.replace(/^\s+/,"")
