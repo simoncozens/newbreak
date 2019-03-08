@@ -247,6 +247,8 @@ export class Linebreaker {
     let curShrink = 0;
 
     let considerations = [] as BreakpointSet[];
+    var bestBadness = Infinity
+    var anyNegativePenalties = relevant.some((e) => { return e.penalty < 0 })
     var that = this;
     let addNodeToTotals = function (n) {
       that.debug(`Adding width ${n.width} for node ${n.debugText||n.text||""}`, lineNo)
@@ -290,11 +292,13 @@ export class Linebreaker {
         badness = this.considerDemerits(badness, thisNode);
         this.debug(` Badness was ${badness}`, lineNo)
 
-        // If we've already got a better option or there are
-        // no other options, don't bother. But if there are, we
-        // need to do a full investigation of this node.
-        if (relevant.length > 1) {
-          // Now recursively investigate the consequences of this breakpoint.
+        if (bestBadness < badness && !anyNegativePenalties) {
+          // We have a better option already, and we have no chance
+          // to improve this option, don't bother.
+        } else if (relevant.length == 1) {
+          // We aren't going to find any other nodes. Don't bother
+        } else {
+          // It's worth a further look at this breakpoint.
           // If we have nodes A...Z and we test a break at C, we need to work
           // out the best way to break the sub-paragraph D...Z.
 
@@ -321,6 +325,11 @@ export class Linebreaker {
             newConsideration.points = newConsideration.points.concat(recursed.points);
             newConsideration.totalBadness += recursed.totalBadness;
 
+            // Save this option if it's better than we've seen already,
+            // to save recursing into worse ones.
+            if (newConsideration.totalBadness < bestBadness) {
+              bestBadness = newConsideration.totalBadness
+            }
             considerations.push(newConsideration);
           }
         }
