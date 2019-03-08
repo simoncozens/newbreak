@@ -22,7 +22,8 @@ interface DomBreakOptions {
   textLetterSpacing?: number,
   textLetterSpacingPriority?: number,
   hyphenate?: boolean,
-  colorize?: boolean
+  colorize?: boolean,
+  fullJustify?: boolean
 }
 
 var defaultOptions: DomBreakOptions = {
@@ -33,7 +34,8 @@ var defaultOptions: DomBreakOptions = {
   textLetterSpacing: 0,
   textLetterSpacingPriority: 0,
   hyphenate: false,
-  colorize: true
+  colorize: true,
+  fullJustify: false
 }
 
 declare var Hyphenator: any;
@@ -72,6 +74,7 @@ export class DomBreak {
     sp.width(textWidth("x x", domnode.css("font"))-textWidth("xx",domnode.css("font")))
     return {
       text: sp,
+      debugText: " ",
       penalty: 0,
       breakClass: 1,
       width: sp.width(),
@@ -88,12 +91,41 @@ export class DomBreak {
     var sp1 = $("<span/>")
     sp1.addClass("hyphen");
     return {
+      debugText: "",
       text:sp1,
       breakHereText: "-",
       width:0,
       breakHereWidth: width,
       breakClass:1
     } as Node;
+  }
+
+  public makeForcedBreak(domnode) : Node[] {
+    var rv: Node[] = []
+    if (!this.options.fullJustify) {
+      var sp = $("<span/>")
+      sp.addClass("glue")
+      rv.push(
+      {
+        debugText: " ",
+        text: sp,
+        breakClass: 0,
+        penalty: 0,
+        width: sp.width(),
+        stretch: 100000,
+        shrink: 0
+      } as Node)
+    }
+    var b = $("<span class='break'/>")
+    rv.push(
+    {
+      debugText: "<BR!>\n",
+      text: b,
+      breakClass: 1,
+      penalty: -10000,
+      width: 0,
+    } as Node)
+    return rv;
   }
 
   public makeText(t :string, domnode) {
@@ -107,6 +139,7 @@ export class DomBreak {
     var stretch = maximumLSavailable * this.options.textLetterSpacingPriority + maximumVarfontStretchAvailable * (1-this.options.textLetterSpacingPriority)
     sp.attr("width", width);
     return {
+      debugText: t,
       text: sp,
       breakClass:0,
       penalty:0,
@@ -133,9 +166,15 @@ export class DomBreak {
     domnode.addClass("nowrap")
 
     var nodelist: Node[] = [];
-    for (let t of text.split(/(\s+)/)) {
-      let n: Node;
-      if (t.match(/\s+/)) {
+    for (let t of text.split(/(\s+)/m)) {
+      var n: Node;
+      if (t.match(/\s*\n\s*/m)) {
+        var nodes = this.makeForcedBreak(domnode);
+        for (n of nodes) {
+          nodelist.push(n)
+          domnode.append(n.text)
+        }
+      } else if (t.match(/\s+/)) {
         // This is just space. Turn it into a glue node.
         n = this.makeGlue(domnode);
         nodelist.push(n);
@@ -162,7 +201,7 @@ export class DomBreak {
       }
     }
 
-    if (!domnode.hasClass("fulljustify")) {
+    if (!this.options.fullJustify) {
       // At the end of the paragraph we need super-stretchy glue.
       let stretchy = this.makeGlue(domnode);
       stretchy.stretch = 10000;
@@ -194,7 +233,8 @@ export class DomBreak {
     var nodelist = this.nodelist;
     var domnode = this.domNode;
     var breaker = new Linebreaker(nodelist, [domnode.width()])
-    var points = breaker.doBreak({fullJustify: domnode.hasClass("fulljustify")});
+    breaker.debugging = false
+    var points = breaker.doBreak({fullJustify: this.options.fullJustify});
     var ratios = breaker.ratios(points)
 
     // Now we have our breakpoints, we have to actually lay the thing out,

@@ -54,6 +54,7 @@ export class Node {
   public breakHereShrink?: number;
   public breakHereText?: any;
   public text?: any;
+  public debugText?: string;
   originalIndex?: number;
 }
 
@@ -183,7 +184,14 @@ export class Linebreaker {
     if (Math.abs(d) >= 10000) { d = 100000000} else {
       d = d * d
     }
-    if (thisNode.penalty) { d += thisNode.penalty * thisNode.penalty }
+    if (thisNode.penalty) {
+      this.debug(`Node ${thisNode.debugText||thisNode.text} has penalty ${thisNode.penalty}`)
+      if (thisNode.penalty > 0) {
+        d += thisNode.penalty * thisNode.penalty
+      } else {
+        d -= thisNode.penalty * thisNode.penalty
+      }
+    }
     return d;
   }
 
@@ -239,10 +247,9 @@ export class Linebreaker {
     let curShrink = 0;
 
     let considerations = [] as BreakpointSet[];
-    let minTotalBadness = Infinity;
     var that = this;
     let addNodeToTotals = function (n) {
-      that.debug(`Adding width ${n.width} for node ${n.text||""}`, lineNo)
+      that.debug(`Adding width ${n.width} for node ${n.debugText||n.text||""}`, lineNo)
       curWidth += n.width;
       curStretch += n.stretch || 0;
       curShrink += n.shrink || 0;
@@ -254,7 +261,7 @@ export class Linebreaker {
     */
     for (var thisNode of relevant) {
       if (thisNode.breakClass >= options.class) {
-        this.debug(`Node ${thisNode.originalIndex} is possible`, lineNo)
+        this.debug(`Node ${thisNode.originalIndex} ${thisNode.debugText||thisNode.text||""} is possible`, lineNo)
 
         // As we're looking at the possibility of breaking here, add
         // any additional discretionary width (eg hyphens). We'll take it
@@ -286,7 +293,7 @@ export class Linebreaker {
         // If we've already got a better option or there are
         // no other options, don't bother. But if there are, we
         // need to do a full investigation of this node.
-        if (badness < minTotalBadness && relevant.length > 1) {
+        if (relevant.length > 1) {
           // Now recursively investigate the consequences of this breakpoint.
           // If we have nodes A...Z and we test a break at C, we need to work
           // out the best way to break the sub-paragraph D...Z.
@@ -314,11 +321,6 @@ export class Linebreaker {
             newConsideration.points = newConsideration.points.concat(recursed.points);
             newConsideration.totalBadness += recursed.totalBadness;
 
-            // This is just a timesaver - keep track of winner, and don't
-            // investigate anything worse than it.
-            if (newConsideration.totalBadness < minTotalBadness) {
-              minTotalBadness = newConsideration.totalBadness
-            }
             considerations.push(newConsideration);
           }
         }
@@ -351,7 +353,8 @@ export class Linebreaker {
     this.debug("---")
     let points = origpoints.slice(0)
     for (let i= options.start; i < options.end; i++) {
-      lines[lines.length-1] += this.nodes[i].text || (this.nodes[i].width>0?" ":"");
+      var debugText = this.nodes[i].debugText || this.nodes[i].text
+      lines[lines.length-1] += debugText || (this.nodes[i].width>0?" ":"");
       if (i == points[0]) {
         if (this.nodes[i].breakHereText) { lines[lines.length-1] += this.nodes[i].breakHereText}
         points.shift();
@@ -418,7 +421,7 @@ export class Linebreaker {
 
   private debug(msg: any, lineNo=0) {
     if (this.debugging) {
-      var spacer = new Array(lineNo+1).join("  ")
+      var spacer = new Array(lineNo+1).join(" + ")
       console.log(spacer + msg);
     }
   }
