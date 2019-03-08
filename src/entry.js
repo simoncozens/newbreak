@@ -32,6 +32,9 @@ $(".slidecontainer input").change(function (e) {
     if (id == "hyphenate") {
         d.options.hyphenate = !!input.prop('checked');
     }
+    else if (id == "fulljustify") {
+        $("#testbox").toggleClass("fulljustify");
+    }
     else {
         var v = input.val() / 100.0;
         $("#" + id + "Value").text(v);

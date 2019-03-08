@@ -149,11 +149,12 @@ var DomBreak = /** @class */ (function () {
                 }
             }
         }
-        // At the end of the paragraph we need super-stretchy glue,
-        // else we end up with full-justification.
-        var stretchy = this.makeGlue(domnode);
-        stretchy.stretch = 10000;
-        nodelist.push(stretchy);
+        if (!domnode.hasClass("fulljustify")) {
+            // At the end of the paragraph we need super-stretchy glue.
+            var stretchy = this.makeGlue(domnode);
+            stretchy.stretch = 10000;
+            nodelist.push(stretchy);
+        }
         return nodelist;
     };
     DomBreak.prototype.setToWidth = function (el, width) {
@@ -180,7 +181,7 @@ var DomBreak = /** @class */ (function () {
         var nodelist = this.nodelist;
         var domnode = this.domNode;
         var breaker = new newbreak_1.Linebreaker(nodelist, [domnode.width()]);
-        var points = breaker.doBreak();
+        var points = breaker.doBreak({ fullJustify: domnode.hasClass("fulljustify") });
         var ratios = breaker.ratios(points);
         // Now we have our breakpoints, we have to actually lay the thing out,
         // which turns out to be the hard bit.

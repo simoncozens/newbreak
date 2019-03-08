@@ -56,7 +56,7 @@ var Linebreaker = /** @class */ (function () {
             this.nodes.push(__assign({}, n));
         }
         // Add dummy node to end.
-        this.nodes.push({ width: 0, breakClass: 1, penalty: INF_BAD });
+        this.nodes.push({ width: 0, breakClass: 1, penalty: 0 });
         this.memoizeCache = {};
     }
     /**
@@ -64,13 +64,14 @@ var Linebreaker = /** @class */ (function () {
      * You may want to feed the output of this into the `ratios` method below.
      * @returns {number[]} An array of node indexes at which to break.
      */
-    Linebreaker.prototype.doBreak = function () {
+    Linebreaker.prototype.doBreak = function (options) {
+        if (options === void 0) { options = {}; }
         var maxBreakClass = Math.max.apply(Math, this.nodes.map(function (x) { return x.breakClass; }));
         // Basically we run through the break classes from highest to lowest,
         // trying to `findBreakpoints` for each class.
         for (var i = maxBreakClass; i > 0; i--) {
             this.debug("Trying breaks of class " + i);
-            var best = this.findBreakpoints(0, { class: i, start: 0, end: this.nodes.length - 1 });
+            var best = this.findBreakpoints(0, __assign({ class: i, start: 0, end: this.nodes.length - 1 }, options));
             if (best.points.length > 0) {
                 return best.points;
             }
@@ -225,13 +226,14 @@ var Linebreaker = /** @class */ (function () {
                 }
                 this.debug(" Target: " + target + ". Current width: " + curWidth, lineNo);
                 // If we're a long way from the end and shrinking/stretching to get
-                // there would be horrible, don't even both investigating this breakpoint.
-                if (target - curWidth < 0 && target - curWidth < -3 * curShrink) {
+                // there would be horrible, don't even both investigating this breakpoint
+                // unless there is no other choice.
+                if (target - curWidth < 0 && target - curWidth < -3 * curShrink && !options.fullJustify) {
                     this.debug(" Too shrunk " + (target - curWidth) + " needed, " + 3 * curShrink + " available; not bothering", lineNo);
                     addNodeToTotals(thisNode);
                     continue;
                 }
-                if (target - curWidth > 0 && target - curWidth > 3 * curStretch) {
+                if (target - curWidth > 0 && target - curWidth > 3 * curStretch && !options.fullJustify) {
                     this.debug(" Too stretched " + (target - curWidth) + " needed, " + 3 * curStretch + " available; not bothering", lineNo);
                     addNodeToTotals(thisNode);
                     continue;
@@ -260,6 +262,7 @@ var Linebreaker = /** @class */ (function () {
                             class: options.class,
                             start: thisNode.originalIndex + 1,
                             end: options.end,
+                            fullJustify: options.fullJustify
                         });
                         this.debug("In that recursion, total badness = " + recursed.totalBadness);
                         // ...and then we add to it the breakpoints for the rest of the paragraph.
@@ -284,7 +287,7 @@ var Linebreaker = /** @class */ (function () {
         }
         // If we found nothing, give up.
         if (considerations.length < 1) {
-            return { totalBadness: 0, points: [] };
+            return { totalBadness: INF_BAD * INF_BAD, points: [] };
         }
         // Otherwise, find the best of the bunch.
         var best = considerations.reduce(function (a, b) { return a.totalBadness <= b.totalBadness ? a : b; });
