@@ -135,9 +135,29 @@ export class DomBreak {
     var length = t.length;
     var width = textWidth(t, domnode.css("font"))
     var maximumLSavailable = (length-1) * this.options.textLetterSpacing
-    var maximumVarfontStretchAvailable = this.options.textStretch * width
+    var maximumVarfontStretchAvailable : number
+    var shrink;
+    if (this.options.textStretch == "computed") {
+      var measureEl = sp.clone().appendTo(this.domNode).hide();
+      this.setToWidth(measureEl, 1000)
+      maximumVarfontStretchAvailable = measureEl.width() - width
+      measureEl.remove()
+    } else {
+      var maximumVarfontStretchAvailable = (this.options.textStretch as number) * width
+    }
+    if (this.options.textShrink == "computed") {
+      var measureEl = sp.clone().appendTo(this.domNode).hide();
+      this.setToWidth(measureEl, 0)
+      shrink = width - measureEl.width()
+      measureEl.remove()
+    } else {
+      shrink = (this.options.textShrink as number) * width
+    }
+    this.setToWidth(sp, width)
     var stretch = maximumLSavailable * this.options.textLetterSpacingPriority + maximumVarfontStretchAvailable * (1-this.options.textLetterSpacingPriority)
     sp.attr("width", width);
+    sp.attr("stretch", stretch);
+    sp.attr("shrink", shrink);
     return {
       debugText: t,
       text: sp,
@@ -145,7 +165,7 @@ export class DomBreak {
       penalty:0,
       width: width,
       stretch: stretch,
-      shrink: this.options.textShrink * width
+      shrink: shrink
     } as Node;
   }
 
