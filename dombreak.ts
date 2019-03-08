@@ -35,7 +35,8 @@ var defaultOptions: DomBreakOptions = {
   textLetterSpacingPriority: 0,
   hyphenate: false,
   colorize: true,
-  fullJustify: false
+  fullJustify: false,
+  method: "font-stretch"
 }
 
 declare var Hyphenator: any;
@@ -232,11 +233,21 @@ export class DomBreak {
 
   public setToWidth(el:JQuery<HTMLSpanElement>, width: number) {
     var tries = 20
-    var guess = width / el.width() * 100
-    var min = 0 // XXX
-    var max = 200 // XXX
+    if (this.options.method == "font-stretch") {
+      var guess = width / el.width() * 100
+      var min = 0 // XXX
+      var max = 200 // XXX
+    } else {
+      var guess = width / el.width() * 1000
+      var min = 0 // XXX
+      var max = 1000 // XXX
+    }
     while (tries--) {
-      el.css("font-stretch", guess+"%")
+      if (this.options.method == "font-stretch") {
+        el.css("font-stretch", guess+"%")
+      } else {
+        el.css("font-variation-settings", `'${this.options.method}' ${guess}`)
+      }
       var newWidth = el.width()
       if (Math.abs(newWidth - width) < 1) {
         return;
