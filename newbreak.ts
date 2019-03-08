@@ -102,7 +102,7 @@ export class Linebreaker {
       this.nodes.push({...n})
     }
     // Add dummy node to end.
-    this.nodes.push({ width:0, breakClass:1, penalty: INF_BAD} as Node)
+    this.nodes.push({ width:0, breakClass:1, penalty: 0} as Node)
     this.memoizeCache = {}
   }
 
@@ -111,13 +111,13 @@ export class Linebreaker {
    * You may want to feed the output of this into the `ratios` method below.
    * @returns {number[]} An array of node indexes at which to break.
    */
-  public doBreak () :number[] {
+  public doBreak (options:any = {}) :number[] {
     let maxBreakClass = Math.max( ...this.nodes.map( x => x.breakClass) );
     // Basically we run through the break classes from highest to lowest,
     // trying to `findBreakpoints` for each class.
     for (let i = maxBreakClass; i>0; i--) {
       this.debug(`Trying breaks of class ${i}`);
-      let best = this.findBreakpoints(0, { class: i, start: 0, end: this.nodes.length-1 });
+      let best = this.findBreakpoints(0, { class: i, start: 0, end: this.nodes.length-1, ...options });
       if (best.points.length > 0 ) {
         return best.points;
       }
@@ -265,13 +265,14 @@ export class Linebreaker {
         this.debug(` Target: ${target}. Current width: ${curWidth}`, lineNo);
 
         // If we're a long way from the end and shrinking/stretching to get
-        // there would be horrible, don't even both investigating this breakpoint.
-        if (target-curWidth < 0 && target-curWidth < -3 * curShrink) {
+        // there would be horrible, don't even both investigating this breakpoint
+        // unless there is no other choice.
+        if (target-curWidth < 0 && target-curWidth < -3 * curShrink && !options.fullJustify) {
           this.debug(` Too shrunk ${target-curWidth} needed, ${3 * curShrink} available; not bothering`, lineNo)
           addNodeToTotals(thisNode);
           continue;
         }
-        if (target-curWidth > 0 && target-curWidth > 3 * curStretch) {
+        if (target-curWidth > 0 && target-curWidth > 3 * curStretch && !options.fullJustify) {
           this.debug(` Too stretched ${target-curWidth} needed, ${3 * curStretch} available; not bothering`, lineNo)
           addNodeToTotals(thisNode);
           continue;
@@ -305,6 +306,7 @@ export class Linebreaker {
               class: options.class,
               start: thisNode.originalIndex+1,
               end: options.end,
+              fullJustify: options.fullJustify
             })
             this.debug(`In that recursion, total badness = ${recursed.totalBadness}`)
 
@@ -330,7 +332,7 @@ export class Linebreaker {
 
     // If we found nothing, give up.
     if (considerations.length < 1) {
-      return { totalBadness:0, points: [] } as BreakpointSet;
+      return { totalBadness: INF_BAD * INF_BAD, points: [] } as BreakpointSet;
     }
 
     // Otherwise, find the best of the bunch.
