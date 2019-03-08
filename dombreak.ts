@@ -6,24 +6,87 @@
 import * as $ from "jquery";
 import { Node, Linebreaker } from './newbreak';
 
-// Crappy function to measure the width of a bit of text.
-var fakeEl;
-function textWidth (text:string, font) {
-    if (!fakeEl) fakeEl = $('<span>').appendTo(document.body).hide();
-    fakeEl.text(text).css('font', font || this.css('font'));
-    return fakeEl.width();
-};
-
+/** You can provide a hash of options to the DomBreak object to
+ *  control various aspects of its behaviour:
+*/
 interface DomBreakOptions {
+  /**
+  * @property {number} spaceStretch
+  *  A measure of how "stretchy" a space is, defined as the ratio
+  *  between the extended width and the default width. i.e. if your
+  *  default space is 5 points wide and `spaceStretch` is 1.0, then
+  *  you can expand a space another 5 points up to a total of 10 points.
+  **/
   spaceStretch?: number,
+
+  /**
+  * @property {number} spaceShrink
+  *  Similarly for how much a space can shrink; a ratio of 0.5 with
+  *  a 5-point space can reduce the space to 2.5 points where needed.
+  */
   spaceShrink?: number,
-  textStretch?: number,
-  textShrink?: number,
+
+  /**
+  * @property {number} textStretch
+  *  A ratio of how stretchy a piece of text is. Placing a constant
+  *  ratio here assumes that all characters stretch to the same degree.
+  *  If they don't, then you can use the magic string "computed" instead
+  *  of a number. When you do this, DomBreak will try to stretch each bit
+  *  of text as far as the font allows it to go and compute the appropriate
+  *  value for each individual bit of text.
+  */
+  textStretch?: number | string,
+
+  /**
+  * @property {number} textShrink
+  *  The same but for how much a piece of text can shrink.
+  */
+  textShrink?: number | string,
+
+  /**
+  * @property {number} textLetterSpacing
+  *  The maximum amount of letterspacing (in pixels) you want to apply
+  *  when stretching a font.
+  */
   textLetterSpacing?: number,
+
+  /**
+  * @property {number} textLetterSpacingPriority
+  *  Ratio of how much of the stretching of a piece of text is done by
+  *  letterspacing and how much by applying variable font axes.
+  *  If this is 0, everything is done with variable fonts; if it is 1,
+  *  all stretching is done by letterspacing.
+  */
   textLetterSpacingPriority?: number,
+
+  /**
+  * @property {boolean} hyphenate
+  *  Should the text be hyphenated?
+  */
   hyphenate?: boolean,
+
+  /**
+  * @property {boolean} colorize
+  *  If this is true, then stretched text becomes more green as it
+  *  stretches while shrunk text becomes more red.
+  */
   colorize?: boolean,
-  fullJustify?: boolean
+
+  /**
+  * @property {boolean} fullJustify
+  *  If false, the last line and any text with hard breaks are set ragged;
+  *  if true, they are set flush.
+  */
+
+  fullJustify?: boolean,
+
+  /**
+  * @property {string} method
+  *  The CSS method used to stretch and shrink text. This can either be
+  *  the string "font-stretch", in which case the CSS parameter "font-stretch"
+  *  is used, or the name of a variable font axis such as "wdth" or "GEXT".
+  */
+  method?: string
 }
 
 var defaultOptions: DomBreakOptions = {
@@ -40,6 +103,14 @@ var defaultOptions: DomBreakOptions = {
 }
 
 declare var Hyphenator: any;
+
+// Crappy function to measure the width of a bit of text.
+var fakeEl;
+function textWidth (text:string, font) {
+    if (!fakeEl) fakeEl = $('<span>').appendTo(document.body).hide();
+    fakeEl.text(text).css('font', font || this.css('font'));
+    return fakeEl.width();
+};
 
 export class DomBreak {
   public options: DomBreakOptions;
