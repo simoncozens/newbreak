@@ -86,7 +86,7 @@ interface DomBreakOptions {
   *  the string "font-stretch", in which case the CSS parameter "font-stretch"
   *  is used, or the name of a variable font axis such as "wdth" or "GEXT".
   */
-  method?: string
+  method?: string,
 
   /**
   * @property {function} customizeTextNode
@@ -97,7 +97,16 @@ interface DomBreakOptions {
   *  If it does return, it should return a list of nodes, which will be
   *  *substituted* for the node passed in.
   */
-  customizeTextNode?: ((text: string, node: Node) => Node[]) | ((text: string, node: Node) => void)
+  customizeTextNode?: ((text: string, node: Node) => Node[]) | ((text: string, node: Node) => void),
+
+  /**
+  * @property {function} customNodeMaker
+  *  When a HTML element, rather than a piece of text or space, is found in the
+  *  box to be justified, it is passed to this function to be transformed into
+  *  one or more Nodes. By default, the text is extracted as normal.
+  */
+  customNodeMaker?: (domnode: JQuery<HTMLElement>) => Node[]
+
 }
 
 var defaultOptions: DomBreakOptions = {
@@ -135,6 +144,11 @@ export class DomBreak {
     this.options = {...defaultOptions,...options};
     this.domNode = domnode;
     this.origContents = domnode.contents();
+    if (!this.options.customNodeMaker) {
+      this.options.customNodeMaker = (el) => {
+        return this.textToNodes(domnode, el.text())
+      }
+    }
     this.rebuild();
   }
 
@@ -222,7 +236,6 @@ export class DomBreak {
     var maximumVarfontStretchAvailable : number
     var shrink;
     if (this.options.textStretch == "computed") {
-      console.log("Computing stretch")
       maximumVarfontStretchAvailable = this.computeMaxWidth(sp) - width;
     } else {
       var maximumVarfontStretchAvailable = (this.options.textStretch as number) * width
@@ -294,15 +307,15 @@ export class DomBreak {
         nodelist = nodelist.concat(this.textToNodes(domnode, el.textContent))
       } else if (el.nodeType == 1) {
         el = el as HTMLElement
+        var nodes
         if (el.tagName == "BR") {
-          var nodes = this.makeForcedBreak(domnode);
-          for (var n of nodes) {
-            nodelist.push(n)
-            domnode.append(n.text)
-          }
+          nodes = this.makeForcedBreak(domnode);
         } else {
-          // Sort it out yourself!
-
+          nodes = this.options.customNodeMaker($(el))
+        }
+        for (var n of nodes) {
+          nodelist.push(n)
+          domnode.append(n.text)
         }
       }
     })
