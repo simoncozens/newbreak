@@ -4,10 +4,10 @@ import { DomBreak } from "./dombreak";
 var box = $("#testbox")
 
 var d: DomBreak = new DomBreak(box, {textLetterSpacingPriority: 0});
-if (box.data("text-stretch")) {
+if (box[0].hasAttribute("data-text-stretch")) {
   d.options.textStretch = box.data("text-stretch")
 }
-if (box.data("text-shrink")) {
+if (box[0].hasAttribute("data-text-shrink")) {
   d.options.textShrink = box.data("text-shrink")
 }
 if (box.data("method")) {
