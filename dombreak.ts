@@ -128,6 +128,8 @@ export class DomBreak {
   public nodelist: Node[];
   public origContents: JQuery<HTMLElement|Text|Comment>;
   public domNode: JQuery<HTMLElement>;
+  public cacheComputedShrink = {}
+  public cacheComputedStretch = {}
 
   constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
     this.options = {...defaultOptions,...options};
@@ -220,18 +222,13 @@ export class DomBreak {
     var maximumVarfontStretchAvailable : number
     var shrink;
     if (this.options.textStretch == "computed") {
-      var measureEl = sp.clone().appendTo(this.domNode).hide();
-      this.setToWidth(measureEl, 1000)
-      maximumVarfontStretchAvailable = measureEl.width() - width
-      measureEl.remove()
+      console.log("Computing stretch")
+      maximumVarfontStretchAvailable = this.computeMaxWidth(sp) - width;
     } else {
       var maximumVarfontStretchAvailable = (this.options.textStretch as number) * width
     }
     if (this.options.textShrink == "computed") {
-      var measureEl = sp.clone().appendTo(this.domNode).hide();
-      this.setToWidth(measureEl, 0)
-      shrink = width - measureEl.width()
-      measureEl.remove()
+      shrink = width - this.computeMinWidth(sp);
     } else {
       shrink = (this.options.textShrink as number) * width
     }
@@ -255,6 +252,26 @@ export class DomBreak {
       if (res) { return res }
     }
     return [node];
+  }
+
+  public computeMaxWidth(sp: JQuery<HTMLElement>) : number {
+    if (this.cacheComputedStretch[sp.text()]) { return this.cacheComputedStretch[sp.text()] }
+    var measureEl = sp.clone().appendTo(this.domNode).hide();
+    this.setToWidth(measureEl, 1000)
+    var w = measureEl.width()
+    measureEl.remove()
+    this.cacheComputedStretch[sp.text()] = w
+    return w
+  }
+
+  public computeMinWidth(sp: JQuery<HTMLElement>) : number {
+    if (this.cacheComputedShrink[sp.text()]) { return this.cacheComputedShrink[sp.text()] }
+    var measureEl = sp.clone().appendTo(this.domNode).hide();
+    this.setToWidth(measureEl, 0)
+    var w = measureEl.width()
+    measureEl.remove()
+    this.cacheComputedShrink[sp.text()] = w
+    return w
   }
 
   private hyphenator: any;
