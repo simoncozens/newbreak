@@ -1,23 +1,32 @@
 // Just an entry point to the typescript bundle.
 
 import { DomBreak } from "./dombreak";
+var box = $("#testbox")
 
-var d: DomBreak;
+var d: DomBreak = new DomBreak(box, {textLetterSpacingPriority: 0});
+if (box.data("text-stretch")) {
+  d.options.textStretch = box.data("text-stretch")
+}
+if (box.data("text-shrink")) {
+  d.options.textShrink = box.data("text-shrink")
+}
+if (box.data("method")) {
+  d.options.method = box.data("method")
+}
+
+d.options.customizeTextNode = function(text, node) {
+  if (text.length < 2) { node.stretch = 0 }
+}
+d.rebuild()
 
 function changeFont(font) {
-  $("div#testbox").css("font-family", font)
+  box.css("font-family", font)
   window["fontSpy"](font, {
     success: function() {
-      if (d) {
-        d.rebuild()
-      } else {
-        d = new DomBreak($("#testbox"), {textLetterSpacingPriority: 0.25});
-      }
+      d.rebuild()
     }
   })
 }
-
-changeFont("Encode Sans");
 
 $("select").on("change", (e) => {
   changeFont($(e.target).val());

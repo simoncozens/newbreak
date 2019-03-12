@@ -87,6 +87,17 @@ interface DomBreakOptions {
   *  is used, or the name of a variable font axis such as "wdth" or "GEXT".
   */
   method?: string
+
+  /**
+  * @property {function} customizeTextNode
+  *  When a node is created from a piece of text, this callback is called to
+  *  allow the user to customize the node. For example, you can check the text
+  *  and decide that you don't want this particular bit of text to be stretched
+  *  at all. Normally this function should mutate the node and return nothing.
+  *  If it does return, it should return a list of nodes, which will be
+  *  *substituted* for the node passed in.
+  */
+  customizeTextNode?: ((text: string, node: Node) => Node[]) | ((text: string, node: Node) => void)
 }
 
 var defaultOptions: DomBreakOptions = {
@@ -115,19 +126,18 @@ function textWidth (text:string, font) {
 export class DomBreak {
   public options: DomBreakOptions;
   public nodelist: Node[];
-  public origText: string;
+  public origContents: JQuery<HTMLElement|Text|Comment>;
   public domNode: JQuery<HTMLElement>;
 
   constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
     this.options = {...defaultOptions,...options};
     this.domNode = domnode;
-    this.origText = domnode.text();
-    this.origText = this.origText.replace(/^\s+/,"")
+    this.origContents = domnode.contents();
     this.rebuild();
   }
 
   public rebuild () {
-    this.nodelist = this.textToNodes(this.domNode, this.origText);
+    this.nodelist = this.DOMToNodes(this.domNode, this.origContents);
     let doResize = (evt, ui) => { this.layout() }
     if (this.domNode.resizable( "instance" )) {
       this.domNode.resizable("destroy");
@@ -200,7 +210,7 @@ export class DomBreak {
     return rv;
   }
 
-  public makeText(t :string, domnode) {
+  public makeText(t :string, domnode) : Node[] {
     var sp = $("<span/>");
     sp.addClass("text")
     sp.text(t);
@@ -227,10 +237,7 @@ export class DomBreak {
     }
     this.setToWidth(sp, width)
     var stretch = maximumLSavailable * this.options.textLetterSpacingPriority + maximumVarfontStretchAvailable * (1-this.options.textLetterSpacingPriority)
-    sp.attr("width", width);
-    sp.attr("stretch", stretch);
-    sp.attr("shrink", shrink);
-    return {
+    var node = {
       debugText: t,
       text: sp,
       breakClass:0,
@@ -239,6 +246,15 @@ export class DomBreak {
       stretch: stretch,
       shrink: shrink
     } as Node;
+
+    sp.attr("width", node.width);
+    sp.attr("stretch", node.stretch);
+    sp.attr("shrink", node.shrink);
+    if (this.options.customizeTextNode) {
+      var res = this.options.customizeTextNode(t, node)
+      if (res) { return res }
+    }
+    return [node];
   }
 
   private hyphenator: any;
@@ -252,21 +268,37 @@ export class DomBreak {
 
   // The first job is to create nodes, both in the DOM and
   // newbreak `Node` objects, representing each word and space.
-  public textToNodes(domnode: JQuery<HTMLElement>, text: string) : Node[] {
-    // We'll empty the container and tell it that we're handling wrapping.
+  public DOMToNodes(domnode: JQuery<HTMLElement>, contents: JQuery<HTMLElement|Text|Comment>) : Node[] {
     domnode.empty()
     domnode.addClass("nowrap")
+    var nodelist: Node[] = []
+    contents.each( (i,el) => {
+      if (el.nodeType == 3) {
+        nodelist = nodelist.concat(this.textToNodes(domnode, el.textContent))
+      } else if (el.nodeType == 1) {
+        el = el as HTMLElement
+        if (el.tagName == "BR") {
+          var nodes = this.makeForcedBreak(domnode);
+          for (var n of nodes) {
+            nodelist.push(n)
+            domnode.append(n.text)
+          }
+        } else {
+          // Sort it out yourself!
+
+        }
+      }
+    })
+    return nodelist
+  }
+
+  public textToNodes(domnode: JQuery<HTMLElement>, text: string) : Node[] {
+    // We'll empty the container and tell it that we're handling wrapping.
 
     var nodelist: Node[] = [];
     for (let t of text.split(/(\s+)/m)) {
       var n: Node;
-      if (t.match(/\s*\n\s*/m)) {
-        var nodes = this.makeForcedBreak(domnode);
-        for (n of nodes) {
-          nodelist.push(n)
-          domnode.append(n.text)
-        }
-      } else if (t.match(/\s+/)) {
+      if (t.match(/\s+/)) {
         // This is just space. Turn it into a glue node.
         n = this.makeGlue(domnode);
         nodelist.push(n);
@@ -280,9 +312,11 @@ export class DomBreak {
           var frag = fragments[idx];
           // Turn each fragment into a `Node`, pop it on the list
           // and put the word back into the DOM.
-          n = this.makeText(frag, domnode);
-          nodelist.push(n);
-          domnode.append(n.text);
+          var nl = this.makeText(frag, domnode);
+          for (n of nl) {
+            nodelist.push(n);
+            domnode.append(n.text);
+          }
           if (idx != fragments.length-1) {
             // Add hyphens between each fragment.
             n = this.makeHyphen(domnode);
