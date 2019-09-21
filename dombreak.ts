@@ -125,11 +125,16 @@ var defaultOptions: DomBreakOptions = {
 declare var Hyphenator: any;
 
 // Crappy function to measure the width of a bit of text.
-var fakeEl;
-function textWidth (text:string, font) {
-    if (!fakeEl) fakeEl = $('<span>').appendTo(document.body).hide();
-    fakeEl.text(text).css('font', font || this.css('font'));
-    return fakeEl.width();
+var fakeEl: JQuery<HTMLElement>;
+function textWidth (text:string, elProto: JQuery<HTMLElement>) :number {
+  if (!fakeEl) {
+    fakeEl = $("<span>").appendTo(document.body).hide()
+  }
+  for (var c of ["font-style", "font-variant", "font-weight", "font-size", "font-family", "font-stretch", "font-variation-settings"]) {
+    fakeEl.css(c,elProto.css(c));
+  }
+  fakeEl.text(text);
+  return fakeEl.width();
 };
 
 export class DomBreak {
@@ -139,6 +144,7 @@ export class DomBreak {
   public domNode: JQuery<HTMLElement>;
   public cacheComputedShrink = {}
   public cacheComputedStretch = {}
+  public cacheSpaceWidth = -1;
 
   constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
     this.options = {...defaultOptions,...options};
@@ -169,7 +175,10 @@ export class DomBreak {
     sp.addClass("glue")
     // Because it's hard to measure a space directly we have to do a bit of
     // messing about to work out the width.
-    sp.width(textWidth("x x", domnode.css("font"))-textWidth("xx",domnode.css("font")))
+    if (this.cacheSpaceWidth == -1) {
+      this.cacheSpaceWidth = textWidth("x x", domnode)-textWidth("xx",domnode)
+    }
+    sp.width(this.cacheSpaceWidth)
     return {
       text: sp,
       debugText: " ",
@@ -184,7 +193,7 @@ export class DomBreak {
   // A hyphen is an empty node, but with discretionary width and text.
   // It can't stretch.
   public makeHyphen(domnode): Node {
-    var width = textWidth("-", domnode.css("font"))
+    var width = textWidth("-", domnode)
 
     var sp1 = $("<span/>")
     sp1.addClass("hyphen");
@@ -231,7 +240,7 @@ export class DomBreak {
     sp.addClass("text")
     sp.text(t);
     var length = t.length;
-    var width = textWidth(t, domnode.css("font"))
+    var width = textWidth(t, domnode)
     var maximumLSavailable = (length-1) * this.options.textLetterSpacing
     var maximumVarfontStretchAvailable : number
     var shrink;
