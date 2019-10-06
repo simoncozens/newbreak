@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="Test line breaking">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Test line breaking</title>
+        <link rel="stylesheet" href="css/base.css">
+        <link rel="stylesheet" href="css/arabic.css">
+        <link rel="author" href="humans.txt">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="src/jQuery-FontSpy.js"></script>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    </head>
+    <body>
+
+
+<div class="controls">
+<div class="slidecontainer">
+  <label>Maximum space stretch:</label>
+  <input type="range" min="0" max="500" value="150" class="slider" id="spaceStretch">
+  <span id="spaceStretchValue">1.5</span>
+</div>
+<div class="slidecontainer">
+  <label>Maximum space shrink:</label>
+  <input type="range" min="0" max="100" value="20" class="slider" id="spaceShrink">
+  <span id="spaceShrinkValue">0.20</span>
+</div>
+<div class="slidecontainer">
+  <label>Full Justification:</label>
+  <input type="checkbox" id="fulljustify">
+</div>
+
+</div>
+
+<div id="testbox" style="font:Dana; direction:rtl" data-text-stretch="computed" data-text-shrink="computed" data-method="KASH">
+ فِي البَدءِ كَانَ الكَلِمَةُ وَالكَلِمَةُ كَانَ عِندَ اللَّهِ وَكَانَ الكَلِمَةُ اللَّهَ. هَذَا كَانَ فِي البَدءِ عِندَ اللَّهِ. كُلُّ شَيءٍ بِهِ كَانَ وَبِغَيرِهِ لَم يَكُن شَيءٌ مِمَّا كَانَ.</div>
+
+        <script src="src/kashida.js"></script>
+        <script src="src/bundle.js"></script>
+        <script>
+var box = $("#testbox")
+
+var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
+
+/* This is the code which breaks nodes into extensible chunks, using the
+   kashida.js library loaded above. */
+
+d.options.customizeTextNode = function(text, node) {
+  var chunks = applyKashidaRules(text);
+  // Deal with easy case of single, non-extensible token.
+  if (chunks.length == 1 && chunks[0].kashida == false ) {
+    node.stretch = 0; node.shrink = 0; return [node];
+  }
+  var nodes = [];
+  // We have to put each chunk through the default dombreak nodemaker
+  // so that it can be measured. But the default dombreak nodemaker will
+  // call customizeTextNode (this function), so we would get an infinite
+  // loop. Avoid that by stowing and deleting this function temporarily.
+  var saveThisFunction = d.options.customizeTextNode;
+  delete d.options["customizeTextNode"];
+  for (var c of chunks) {
+    var nl = d.makeText(c.token, $("#testbox"))
+    if (c.kashida == false) {
+      nl[0].stretch = 0
+      nl[0].shrink = 0
+    }
+    nodes.push(nl[0])
+  }
+  d.options.customizeTextNode = saveThisFunction;
+  return nodes;
+}
+
+function changeFont(font) {
+  box.css("font-family", font)
+  window["fontSpy"](font, {
+    success: function() {
+      d.rebuild()
+    }
+  })
+}
+
+$("select").on("change", (e) => {
+  changeFont($(e.target).val());
+})
+
+$(".slidecontainer input").on("input", (e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  var v = (input.val()) / 100.0
+  $(`#${id}Value`).text(v);
+});
+
+$(".slidecontainer input").change((e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  if (id == "hyphenate") {
+    d.options.hyphenate = !!input.prop('checked');
+  } else if (id == "fulljustify") {
+    d.options.fullJustify = !!input.prop('checked');
+  } else {
+    var v = (input.val()) / 100.0
+    $(`#${id}Value`).text(v);
+    d.options[id] = v;
+  }
+  d.rebuild();
+})
+        </script>
+    </body>
+</html>
