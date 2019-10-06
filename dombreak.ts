@@ -149,6 +149,15 @@ export class DomBreak {
   constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
     this.options = {...defaultOptions,...options};
     this.domNode = domnode;
+    if (domnode[0].hasAttribute("data-text-stretch")) {
+      this.options.textStretch = domnode.data("text-stretch")
+    }
+    if (domnode[0].hasAttribute("data-text-shrink")) {
+      this.options.textShrink = domnode.data("text-shrink")
+    }
+    if (domnode.data("method")) {
+      this.options.method = domnode.data("method")
+    }
     this.origContents = domnode.contents();
     if (!this.options.customNodeMaker) {
       this.options.customNodeMaker = (el) => {

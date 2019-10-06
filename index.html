@@ -73,5 +73,45 @@
         <script src="src/hyphenator-en.js"></script>
         <script src="src/hyphenator.js"></script>
         <script src="src/bundle.js"></script>
+        <script>
+var box = $("#testbox")
+
+var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
+
+function changeFont(font) {
+  box.css("font-family", font)
+  window["fontSpy"](font, {
+    success: function() {
+      d.rebuild()
+    }
+  })
+}
+
+$("select").on("change", (e) => {
+  changeFont($(e.target).val());
+})
+
+$(".slidecontainer input").on("input", (e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  var v = (input.val()) / 100.0
+  $(`#${id}Value`).text(v);
+});
+
+$(".slidecontainer input").change((e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  if (id == "hyphenate") {
+    d.options.hyphenate = !!input.prop('checked');
+  } else if (id == "fulljustify") {
+    d.options.fullJustify = !!input.prop('checked');
+  } else {
+    var v = (input.val()) / 100.0
+    $(`#${id}Value`).text(v);
+    d.options[id] = v;
+  }
+  d.rebuild();
+})
+        </script>
     </body>
 </html>
