@@ -240,7 +240,7 @@ export class DomBreak {
     sp.addClass("text")
     sp.text(t);
     var length = t.length;
-    var width = textWidth(t, domnode)
+    var width = textWidth("X"+t+"X", domnode) - textWidth("XX", domnode)
     var maximumLSavailable = (length-1) * this.options.textLetterSpacing
     var maximumVarfontStretchAvailable : number
     var shrink;
