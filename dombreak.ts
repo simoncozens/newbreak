@@ -266,13 +266,13 @@ export class DomBreak {
       shrink: shrink
     } as Node;
 
-    sp.attr("width", node.width);
-    sp.attr("stretch", node.stretch);
-    sp.attr("shrink", node.shrink);
     if (this.options.customizeTextNode) {
       var res = this.options.customizeTextNode(t, node)
       if (res) { return res }
     }
+    sp.attr("width", node.width);
+    sp.attr("stretch", node.stretch);
+    sp.attr("shrink", node.shrink);
     return [node];
   }
 
