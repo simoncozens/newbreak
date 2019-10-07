@@ -149,7 +149,13 @@ var Linebreaker = /** @class */ (function () {
             d = d * d;
         }
         if (thisNode.penalty) {
-            d += thisNode.penalty * thisNode.penalty;
+            this.debug("Node " + (thisNode.debugText || thisNode.text) + " has penalty " + thisNode.penalty);
+            if (thisNode.penalty > 0) {
+                d += thisNode.penalty * thisNode.penalty;
+            }
+            else {
+                d -= thisNode.penalty * thisNode.penalty;
+            }
         }
         return d;
     };
@@ -200,10 +206,11 @@ var Linebreaker = /** @class */ (function () {
         var curStretch = 0;
         var curShrink = 0;
         var considerations = [];
-        var minTotalBadness = Infinity;
+        var bestBadness = Infinity;
+        var anyNegativePenalties = relevant.some(function (e) { return e.penalty < 0; });
         var that = this;
         var addNodeToTotals = function (n) {
-            that.debug("Adding width " + n.width + " for node " + (n.text || ""), lineNo);
+            that.debug("Adding width " + n.width + " for node " + (n.debugText || n.text || ""), lineNo);
             curWidth += n.width;
             curStretch += n.stretch || 0;
             curShrink += n.shrink || 0;
@@ -215,7 +222,7 @@ var Linebreaker = /** @class */ (function () {
         for (var _i = 0, relevant_1 = relevant; _i < relevant_1.length; _i++) {
             var thisNode = relevant_1[_i];
             if (thisNode.breakClass >= options.class) {
-                this.debug("Node " + thisNode.originalIndex + " is possible", lineNo);
+                this.debug("Node " + thisNode.originalIndex + " " + (thisNode.debugText || thisNode.text || "") + " is possible", lineNo);
                 // As we're looking at the possibility of breaking here, add
                 // any additional discretionary width (eg hyphens). We'll take it
                 // out again later if we decide not to make the break.
@@ -242,11 +249,15 @@ var Linebreaker = /** @class */ (function () {
                 var badness = this.computeBadness(target - curWidth, curStretch, curShrink, lineNo);
                 badness = this.considerDemerits(badness, thisNode);
                 this.debug(" Badness was " + badness, lineNo);
-                // If we've already got a better option or there are
-                // no other options, don't bother. But if there are, we
-                // need to do a full investigation of this node.
-                if (badness < minTotalBadness && relevant.length > 1) {
-                    // Now recursively investigate the consequences of this breakpoint.
+                if (bestBadness < badness && !anyNegativePenalties) {
+                    // We have a better option already, and we have no chance
+                    // to improve this option, don't bother.
+                }
+                else if (relevant.length == 1) {
+                    // We aren't going to find any other nodes. Don't bother
+                }
+                else {
+                    // It's worth a further look at this breakpoint.
                     // If we have nodes A...Z and we test a break at C, we need to work
                     // out the best way to break the sub-paragraph D...Z.
                     // Remembering that "Breakpoint path = Breakpoint for first line
@@ -268,10 +279,10 @@ var Linebreaker = /** @class */ (function () {
                         // ...and then we add to it the breakpoints for the rest of the paragraph.
                         newConsideration.points = newConsideration.points.concat(recursed.points);
                         newConsideration.totalBadness += recursed.totalBadness;
-                        // This is just a timesaver - keep track of winner, and don't
-                        // investigate anything worse than it.
-                        if (newConsideration.totalBadness < minTotalBadness) {
-                            minTotalBadness = newConsideration.totalBadness;
+                        // Save this option if it's better than we've seen already,
+                        // to save recursing into worse ones.
+                        if (newConsideration.totalBadness < bestBadness) {
+                            bestBadness = newConsideration.totalBadness;
                         }
                         considerations.push(newConsideration);
                     }
@@ -303,7 +314,8 @@ var Linebreaker = /** @class */ (function () {
         this.debug("---");
         var points = origpoints.slice(0);
         for (var i = options.start; i < options.end; i++) {
-            lines[lines.length - 1] += this.nodes[i].text || (this.nodes[i].width > 0 ? " " : "");
+            var debugText = this.nodes[i].debugText || this.nodes[i].text;
+            lines[lines.length - 1] += debugText || (this.nodes[i].width > 0 ? " " : "");
             if (i == points[0]) {
                 if (this.nodes[i].breakHereText) {
                     lines[lines.length - 1] += this.nodes[i].breakHereText;
@@ -373,7 +385,7 @@ var Linebreaker = /** @class */ (function () {
     Linebreaker.prototype.debug = function (msg, lineNo) {
         if (lineNo === void 0) { lineNo = 0; }
         if (this.debugging) {
-            var spacer = new Array(lineNo + 1).join("  ");
+            var spacer = new Array(lineNo + 1).join(" + ");
             console.log(spacer + msg);
         }
     };

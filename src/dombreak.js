@@ -17,15 +17,6 @@ var __assign = (this && this.__assign) || function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var $ = require("jquery");
 var newbreak_1 = require("./newbreak");
-// Crappy function to measure the width of a bit of text.
-var fakeEl;
-function textWidth(text, font) {
-    if (!fakeEl)
-        fakeEl = $('<span>').appendTo(document.body).hide();
-    fakeEl.text(text).css('font', font || this.css('font'));
-    return fakeEl.width();
-}
-;
 var defaultOptions = {
     spaceStretch: 1.00,
     spaceShrink: 0.20,
@@ -34,19 +25,52 @@ var defaultOptions = {
     textLetterSpacing: 0,
     textLetterSpacingPriority: 0,
     hyphenate: false,
-    colorize: true
+    colorize: true,
+    fullJustify: false,
+    method: "font-stretch"
 };
+// Crappy function to measure the width of a bit of text.
+var fakeEl;
+function textWidth(text, elProto) {
+    if (!fakeEl) {
+        fakeEl = $("<span>").appendTo(document.body).hide();
+    }
+    for (var _i = 0, _a = ["font-style", "font-variant", "font-weight", "font-size", "font-family", "font-stretch", "font-variation-settings"]; _i < _a.length; _i++) {
+        var c = _a[_i];
+        fakeEl.css(c, elProto.css(c));
+    }
+    fakeEl.text(text);
+    return fakeEl.width();
+}
+;
 var DomBreak = /** @class */ (function () {
     function DomBreak(domnode, options) {
-        this.options = __assign({}, options, defaultOptions);
+        var _this = this;
+        this.cacheComputedShrink = {};
+        this.cacheComputedStretch = {};
+        this.cacheSpaceWidth = -1;
+        this.options = __assign({}, defaultOptions, options);
         this.domNode = domnode;
-        this.origText = domnode.text();
-        this.origText = this.origText.replace(/^\s+/, "");
+        if (domnode[0].hasAttribute("data-text-stretch")) {
+            this.options.textStretch = domnode.data("text-stretch");
+        }
+        if (domnode[0].hasAttribute("data-text-shrink")) {
+            this.options.textShrink = domnode.data("text-shrink");
+        }
+        if (domnode.data("method")) {
+            this.options.method = domnode.data("method");
+        }
+        this.origContents = domnode.contents();
+        if (!this.options.customNodeMaker) {
+            this.options.customNodeMaker = function (el) {
+                return _this.textToNodes(domnode, el.text());
+            };
+        }
         this.rebuild();
     }
     DomBreak.prototype.rebuild = function () {
         var _this = this;
-        this.nodelist = this.textToNodes(this.domNode, this.origText);
+        this.nodelist = this.DOMToNodes(this.domNode, this.origContents);
         var doResize = function (evt, ui) { _this.layout(); };
         if (this.domNode.resizable("instance")) {
             this.domNode.resizable("destroy");
@@ -61,9 +85,13 @@ var DomBreak = /** @class */ (function () {
         sp.addClass("glue");
         // Because it's hard to measure a space directly we have to do a bit of
         // messing about to work out the width.
-        sp.width(textWidth("x x", domnode.css("font")) - textWidth("xx", domnode.css("font")));
+        if (this.cacheSpaceWidth == -1) {
+            this.cacheSpaceWidth = textWidth("x x", domnode) - textWidth("xx", domnode);
+        }
+        sp.width(this.cacheSpaceWidth);
         return {
             text: sp,
+            debugText: " ",
             penalty: 0,
             breakClass: 1,
             width: sp.width(),
@@ -74,10 +102,11 @@ var DomBreak = /** @class */ (function () {
     // A hyphen is an empty node, but with discretionary width and text.
     // It can't stretch.
     DomBreak.prototype.makeHyphen = function (domnode) {
-        var width = textWidth("-", domnode.css("font"));
+        var width = textWidth("-", domnode);
         var sp1 = $("<span/>");
         sp1.addClass("hyphen");
         return {
+            debugText: "",
             text: sp1,
             breakHereText: "-",
             width: 0,
@@ -85,24 +114,95 @@ var DomBreak = /** @class */ (function () {
             breakClass: 1
         };
     };
+    DomBreak.prototype.makeForcedBreak = function (domnode) {
+        var rv = [];
+        if (!this.options.fullJustify) {
+            var sp = $("<span/>");
+            sp.addClass("glue");
+            rv.push({
+                debugText: " ",
+                text: sp,
+                breakClass: 0,
+                penalty: 0,
+                width: sp.width(),
+                stretch: 100000,
+                shrink: 0
+            });
+        }
+        var b = $("<span class='break'/>");
+        rv.push({
+            debugText: "<BR!>\n",
+            text: b,
+            breakClass: 1,
+            penalty: -10000,
+            width: 0,
+        });
+        return rv;
+    };
     DomBreak.prototype.makeText = function (t, domnode) {
         var sp = $("<span/>");
         sp.addClass("text");
         sp.text(t);
         var length = t.length;
-        var width = textWidth(t, domnode.css("font"));
+        var width = textWidth("X" + t + "X", domnode) - textWidth("XX", domnode);
         var maximumLSavailable = (length - 1) * this.options.textLetterSpacing;
-        var maximumVarfontStretchAvailable = this.options.textStretch * width;
+        var maximumVarfontStretchAvailable;
+        var shrink;
+        if (this.options.textStretch == "computed") {
+            maximumVarfontStretchAvailable = this.computeMaxWidth(sp) - width;
+        }
+        else {
+            var maximumVarfontStretchAvailable = this.options.textStretch * width;
+        }
+        if (this.options.textShrink == "computed") {
+            shrink = width - this.computeMinWidth(sp);
+        }
+        else {
+            shrink = this.options.textShrink * width;
+        }
+        this.setToWidth(sp, width);
         var stretch = maximumLSavailable * this.options.textLetterSpacingPriority + maximumVarfontStretchAvailable * (1 - this.options.textLetterSpacingPriority);
-        sp.attr("width", width);
-        return {
+        var node = {
+            debugText: t,
             text: sp,
             breakClass: 0,
             penalty: 0,
             width: width,
             stretch: stretch,
-            shrink: this.options.textShrink * width
+            shrink: shrink
         };
+        if (this.options.customizeTextNode) {
+            var res = this.options.customizeTextNode(t, node);
+            if (res) {
+                return res;
+            }
+        }
+        sp.attr("width", node.width);
+        sp.attr("stretch", node.stretch);
+        sp.attr("shrink", node.shrink);
+        return [node];
+    };
+    DomBreak.prototype.computeMaxWidth = function (sp) {
+        if (this.cacheComputedStretch[sp.text()]) {
+            return this.cacheComputedStretch[sp.text()];
+        }
+        var measureEl = sp.clone().appendTo(this.domNode).hide();
+        this.setToWidth(measureEl, 1000);
+        var w = measureEl.width();
+        measureEl.remove();
+        this.cacheComputedStretch[sp.text()] = w;
+        return w;
+    };
+    DomBreak.prototype.computeMinWidth = function (sp) {
+        if (this.cacheComputedShrink[sp.text()]) {
+            return this.cacheComputedShrink[sp.text()];
+        }
+        var measureEl = sp.clone().appendTo(this.domNode).hide();
+        this.setToWidth(measureEl, 0);
+        var w = measureEl.width();
+        measureEl.remove();
+        this.cacheComputedShrink[sp.text()] = w;
+        return w;
     };
     DomBreak.prototype.hyphenate = function (t) {
         if (this.options.hyphenate) {
@@ -115,14 +215,39 @@ var DomBreak = /** @class */ (function () {
     };
     // The first job is to create nodes, both in the DOM and
     // newbreak `Node` objects, representing each word and space.
-    DomBreak.prototype.textToNodes = function (domnode, text) {
-        // We'll empty the container and tell it that we're handling wrapping.
+    DomBreak.prototype.DOMToNodes = function (domnode, contents) {
+        var _this = this;
         domnode.empty();
         domnode.addClass("nowrap");
         var nodelist = [];
-        for (var _i = 0, _a = text.split(/(\s+)/); _i < _a.length; _i++) {
+        contents.each(function (i, el) {
+            if (el.nodeType == 3) {
+                nodelist = nodelist.concat(_this.textToNodes(domnode, el.textContent));
+            }
+            else if (el.nodeType == 1) {
+                el = el;
+                var nodes;
+                if (el.tagName == "BR") {
+                    nodes = _this.makeForcedBreak(domnode);
+                }
+                else {
+                    nodes = _this.options.customNodeMaker($(el));
+                }
+                for (var _i = 0, nodes_1 = nodes; _i < nodes_1.length; _i++) {
+                    var n = nodes_1[_i];
+                    nodelist.push(n);
+                    domnode.append(n.text);
+                }
+            }
+        });
+        return nodelist;
+    };
+    DomBreak.prototype.textToNodes = function (domnode, text) {
+        // We'll empty the container and tell it that we're handling wrapping.
+        var nodelist = [];
+        for (var _i = 0, _a = text.split(/(\s+)/m); _i < _a.length; _i++) {
             var t = _a[_i];
-            var n = void 0;
+            var n;
             if (t.match(/\s+/)) {
                 // This is just space. Turn it into a glue node.
                 n = this.makeGlue(domnode);
@@ -137,9 +262,12 @@ var DomBreak = /** @class */ (function () {
                     var frag = fragments[idx];
                     // Turn each fragment into a `Node`, pop it on the list
                     // and put the word back into the DOM.
-                    n = this.makeText(frag, domnode);
-                    nodelist.push(n);
-                    domnode.append(n.text);
+                    var nl = this.makeText(frag, domnode);
+                    for (var _b = 0, nl_1 = nl; _b < nl_1.length; _b++) {
+                        n = nl_1[_b];
+                        nodelist.push(n);
+                        domnode.append(n.text);
+                    }
                     if (idx != fragments.length - 1) {
                         // Add hyphens between each fragment.
                         n = this.makeHyphen(domnode);
@@ -149,7 +277,7 @@ var DomBreak = /** @class */ (function () {
                 }
             }
         }
-        if (!domnode.hasClass("fulljustify")) {
+        if (!this.options.fullJustify) {
             // At the end of the paragraph we need super-stretchy glue.
             var stretchy = this.makeGlue(domnode);
             stretchy.stretch = 10000;
@@ -159,11 +287,23 @@ var DomBreak = /** @class */ (function () {
     };
     DomBreak.prototype.setToWidth = function (el, width) {
         var tries = 20;
-        var guess = width / el.width() * 100;
-        var min = 0; // XXX
-        var max = 200; // XXX
+        if (this.options.method == "font-stretch") {
+            var guess = width / el.width() * 100;
+            var min = 0; // XXX
+            var max = 200; // XXX
+        }
+        else {
+            var guess = width / el.width() * 1000;
+            var min = 0; // XXX
+            var max = 1000; // XXX
+        }
         while (tries--) {
-            el.css("font-stretch", guess + "%");
+            if (this.options.method == "font-stretch") {
+                el.css("font-stretch", guess + "%");
+            }
+            else {
+                el.css("font-variation-settings", "'" + this.options.method + "' " + guess);
+            }
             var newWidth = el.width();
             if (Math.abs(newWidth - width) < 1) {
                 return;
@@ -181,7 +321,8 @@ var DomBreak = /** @class */ (function () {
         var nodelist = this.nodelist;
         var domnode = this.domNode;
         var breaker = new newbreak_1.Linebreaker(nodelist, [domnode.width()]);
-        var points = breaker.doBreak({ fullJustify: domnode.hasClass("fulljustify") });
+        breaker.debugging = false;
+        var points = breaker.doBreak({ fullJustify: this.options.fullJustify });
         var ratios = breaker.ratios(points);
         // Now we have our breakpoints, we have to actually lay the thing out,
         // which turns out to be the hard bit.
