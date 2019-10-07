@@ -17,7 +17,7 @@
   },
   "scripts": {
     "test": "mocha -r ts-node/register test.ts",
-    "build": "tsc && browserify --debug src/entry.js -o src/bundle.js"
+    "build": "tsc && browserify -s DomBreak src/dombreak.js -o src/bundle.js"
   },
   "author": "",
   "license": "ISC"

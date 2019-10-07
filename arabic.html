@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Test line breaking</title>
         <link rel="stylesheet" href="css/base.css">
+        <link rel="stylesheet" href="css/arabic.css">
         <link rel="author" href="humans.txt">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <script src="src/jQuery-FontSpy.js"></script>
@@ -17,13 +18,6 @@
 
 <div class="controls">
 <div class="slidecontainer">
-  <label>Font</label>
-  <select id="fontselect">
-    <option name="Skia">Skia</option>
-    <option name="Encode Sans" selected>Encode Sans</option>
-  </select>
-</div>
-<div class="slidecontainer">
   <label>Maximum space stretch:</label>
   <input type="range" min="0" max="500" value="150" class="slider" id="spaceStretch">
   <span id="spaceStretchValue">1.5</span>
@@ -34,49 +28,49 @@
   <span id="spaceShrinkValue">0.20</span>
 </div>
 <div class="slidecontainer">
-  <label>Maximum text stretch:</label>
-  <input type="range" min="0" max="100" value="10" class="slider" id="textStretch">
-  <span id="textStretchValue">0.10</span>
-</div>
-<div class="slidecontainer">
-  <label>Maximum text shrink:</label>
-  <input type="range" min="0" max="100" value="10" class="slider" id="textShrink">
-  <span id="textShrinkValue">0.10</span>
-</div>
-<div class="slidecontainer">
-  <label>Maximum letterspacing (px):</label>
-  <input type="range" min="0" max="200" value="0" class="slider" id="textLetterSpacing">
-  <span id="textLetterSpacingValue">0</span>
-</div>
-<div class="slidecontainer">
-  <label>Letterspacing priority:</label>
-  <input type="range" min="0" max="100" value="0" class="slider" id="textLetterSpacingPriority">
-  <span id="textLetterSpacingPriorityValue">0</span>
-  <br><small>
-  (0 = justify exclusively with width axis, 1 = justify exclusively with letterspacing)</small>
-</div>
-<div class="slidecontainer">
-  <label>Hyphenate:</label>
-  <input type="checkbox" id="hyphenate">
-</div>
-<div class="slidecontainer">
   <label>Full Justification:</label>
   <input type="checkbox" id="fulljustify">
 </div>
 
 </div>
 
-<div id="testbox">
-  To Sherlock Holmes she is always "the woman". I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions, and that one particularly, were abhorrent to his cold, precise but admirably balanced mind. He was, I take it, the most perfect reasoning and observing machine that the world has seen, but as a lover he would have placed himself in a false position.
-</div>
+<div id="testbox" style="font:Dana; direction:rtl" data-text-stretch="computed" data-text-shrink="computed" data-method="KASH">
+ فِي البَدءِ كَانَ الكَلِمَةُ وَالكَلِمَةُ كَانَ عِندَ اللَّهِ وَكَانَ الكَلِمَةُ اللَّهَ. هَذَا كَانَ فِي البَدءِ عِندَ اللَّهِ. كُلُّ شَيءٍ بِهِ كَانَ وَبِغَيرِهِ لَم يَكُن شَيءٌ مِمَّا كَانَ.</div>
 
-        <script src="src/hyphenator-en.js"></script>
-        <script src="src/hyphenator.js"></script>
+        <script src="src/kashida.js"></script>
         <script src="src/bundle.js"></script>
         <script>
 var box = $("#testbox")
 
 var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
+
+/* This is the code which breaks nodes into extensible chunks, using the
+   kashida.js library loaded above. */
+
+d.options.customizeTextNode = function(text, node) {
+  var chunks = applyKashidaRules(text);
+  // Deal with easy case of single, non-extensible token.
+  if (chunks.length == 1 && chunks[0].kashida == false ) {
+    node.stretch = 0; node.shrink = 0; return [node];
+  }
+  var nodes = [];
+  // We have to put each chunk through the default dombreak nodemaker
+  // so that it can be measured. But the default dombreak nodemaker will
+  // call customizeTextNode (this function), so we would get an infinite
+  // loop. Avoid that by stowing and deleting this function temporarily.
+  var saveThisFunction = d.options.customizeTextNode;
+  delete d.options["customizeTextNode"];
+  for (var c of chunks) {
+    var nl = d.makeText(c.token, $("#testbox"))
+    if (c.kashida == false) {
+      nl[0].stretch = 0
+      nl[0].shrink = 0
+    }
+    nodes.push(nl[0])
+  }
+  d.options.customizeTextNode = saveThisFunction;
+  return nodes;
+}
 
 function changeFont(font) {
   box.css("font-family", font)
