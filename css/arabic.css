@@ -1,11 +1,11 @@
 @font-face {
-  src: url('Dana2_VariableGX.ttf');
-  font-family:'Dana';
-  font-style: normal;
+  font-family: "Estedad-VF";
+  src: url("./Estedad-VF.woff2")
 }
 
+
 div#testbox {
-  font-family: "Dana"; line-height: 1.5em;
+  font-family: "Estedad-VF"; line-height: 1.5em;
   font-size: 34px;
   width: 420px; border:2px solid #666; padding:5px;
 }

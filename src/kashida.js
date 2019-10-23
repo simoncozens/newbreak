@@ -41,27 +41,36 @@ function needsJoiner(pre,post) {
   return false;
 }
 
+var kashCache = {}
+
 function applyKashidaRules(s) {
   // Standard Arabic "letters" run from 0x620 to 0x64A.
   // For the purposes of counting letters in a word, we ignore all others.
+  if (s in kashCache) { return kashCache[s] }
   var letters =  s.replace(/[^\u0620-\u064A]/g, "")
   var length = letters.length
   var dontStretch = [ {'token': s, 'kashida': false} ]
-  if (length < 2) { return dontStretch }
+  if (length < 2) {
+    return (kashCache[s] = dontStretch)
+  }
 
   if (length == 2) {
     // Initial Seen can be lengthened
-    if (letters[0] == "س" || letters[0] == "ش") { return [ {'token': s, 'kashida': true} ] }
-    else { return dontStretch }
+    if (letters[0] == "س" || letters[0] == "ش") {
+      return (kashCache[s] = [ {'token': s, 'kashida': true} ]);
+    }
+    else {
+      return (kashCache[s] = dontStretch)
+    }
   }
 
   if (length == 3) { // Play it safe
-    return dontStretch
+    return (kashCache[s] = dontStretch)
   }
 
   if (length == 4 || length == 5) { // Ibn Khalouf
     if (letters == "الله") {
-      return dontStretch // This one is special
+      return (kashCache[s] = dontStretch) // This one is special
     }
     // Split into three chunks: one before the stretchable letter, one containing just the
     // second stretchable letter, and one containing the rest. Insert ZWJs as appropriate.
@@ -78,11 +87,11 @@ function applyKashidaRules(s) {
       stretchy = stretchy + zwj;
       post = zwj + post
     }
-    return [
+    return (kashCache[s] = [
       {'token': pre, 'kashida': false },
       {'token': stretchy, 'kashida': true },
       {'token': post, 'kashida': false },
-    ]
+    ]);
   }
 
   chunks  = s.match(/([^\u0620-\u064A]*[\u0620-\u064A])/g)
@@ -103,7 +112,7 @@ function applyKashidaRules(s) {
     }
   }
   nodes.push({ 'token': post, 'kashida': false })
-  return nodes;
+  return (kashCache[s] = nodes);
 }
 
 var testing = false;

@@ -34,8 +34,8 @@
 
 </div>
 
-<div id="testbox" style="font:Dana; direction:rtl" data-text-stretch="computed" data-text-shrink="computed" data-method="KASH">
- فِي البَدءِ كَانَ الكَلِمَةُ وَالكَلِمَةُ كَانَ عِندَ اللَّهِ وَكَانَ الكَلِمَةُ اللَّهَ. هَذَا كَانَ فِي البَدءِ عِندَ اللَّهِ. كُلُّ شَيءٍ بِهِ كَانَ وَبِغَيرِهِ لَم يَكُن شَيءٌ مِمَّا كَانَ.</div>
+<div id="testbox" style="font:Estedad-VF; direction:rtl" data-text-stretch="computed" data-text-shrink="0" data-method="wdth">
+فِي الْبَدْءِ كَانَ الْكَلِمَةُ وَالْكَلِمَةُ كَانَ عِنْدَ اللَّهِ وَكَانَ الْكَلِمَةُ اللَّهَ.  هَذَا كَانَ فِي الْبَدْءِ عِنْدَ اللَّهِ. كُلُّ شَيْءٍ بِهِ كَانَ وَبِغَيْرِهِ لَمْ يَكُنْ شَيْءٌ مِمَّا كَانَ. فِيهِ كَانَتِ الْحَيَاةُ وَالْحَيَاةُ كَانَتْ نُورَ النَّاسِ وَالنُّورُ يُضِيءُ فِي الظُّلْمَةِ وَالظُّلْمَةُ لَمْ تُدْرِكْهُ.  </div>
 
         <script src="src/kashida.js"></script>
         <script src="src/bundle.js"></script>
@@ -72,17 +72,10 @@ d.options.customizeTextNode = function(text, node) {
   return nodes;
 }
 
-function changeFont(font) {
-  box.css("font-family", font)
-  window["fontSpy"](font, {
-    success: function() {
-      d.rebuild()
-    }
-  })
-}
-
-$("select").on("change", (e) => {
-  changeFont($(e.target).val());
+window["fontSpy"]("Estedad-VF", {
+  success: function() {
+    d.rebuild()
+  }
 })
 
 $(".slidecontainer input").on("input", (e) => {
