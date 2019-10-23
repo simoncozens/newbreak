@@ -10437,6 +10437,8 @@ var DomBreak = /** @class */ (function () {
     }
     DomBreak.prototype.rebuild = function () {
         var _this = this;
+        this.cacheComputedStretch = {};
+        this.cacheComputedShrink = {};
         this.nodelist = this.DOMToNodes(this.domNode, this.origContents);
         var doResize = function (evt, ui) { _this.layout(); };
         if (this.domNode.resizable("instance")) {
@@ -10511,12 +10513,13 @@ var DomBreak = /** @class */ (function () {
         sp.addClass("text");
         sp.text(t);
         var length = t.length;
-        var width = textWidth("X" + t + "X", domnode) - textWidth("XX", domnode);
+        var width = textWidth(t, domnode);
         var maximumLSavailable = (length - 1) * this.options.textLetterSpacing;
         var maximumVarfontStretchAvailable;
         var shrink;
         if (this.options.textStretch == "computed") {
             maximumVarfontStretchAvailable = this.computeMaxWidth(sp) - width;
+            // console.log(t+" can stretch by "+maximumVarfontStretchAvailable+"px")
         }
         else {
             var maximumVarfontStretchAvailable = this.options.textStretch * width;
