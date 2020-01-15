@@ -247,6 +247,11 @@ export class Linebreaker {
     */
     for (var thisNodeIx = 0; thisNodeIx < relevant.length ; thisNodeIx++) {
       let thisNode = relevant[thisNodeIx];
+      if (thisNode.alternates && thisNode.alternates.length > 0) {
+        console.log("Seen alternate")
+        seenAlternate = true;
+      }
+
       // If we can't break here... don't try to break here.
       this.debug(`Node ${thisNode.originalIndex} ${thisNode.debugText||thisNode.text||""}`, lineNo)
       if (!thisNode.anyBreakable) {
@@ -264,9 +269,6 @@ export class Linebreaker {
         addNodeToTotals(thisNode);
         continue;
       }
-      if (thisNode.alternates && thisNode.alternates.length > 0) {
-        seenAlternate = true;
-      }
 
       // We have a potential breakpoint. Build a Line node
       // Find out how bad this potential breakpoint is.
@@ -282,7 +284,7 @@ export class Linebreaker {
 
       line.badness = this.badness(line)
       if (seenAlternate) {
-        this.tryToImprove(line);
+        line = this.tryToImprove(line, target);
       }
 
       // If we are at e.g. a hyphenation point (not breakable but has breakable
@@ -386,8 +388,27 @@ export class Linebreaker {
     return bad;
   }
 
-  private tryToImprove(line: Line) {
-    console.log("UNIMPLEMENTED")
+
+  private tryToImprove(line: Line, target:number): Line {
+    var nodesWithAlternates = line.nodes.map( n => [ n, ...(n.alternates||[]) ])
+    var set:Node[];
+    var bestLine = line;
+    this.debug("Trying to improve, base badness is "+ line.badness)
+    for (set of this._cartesian_set(nodesWithAlternates)) {
+      var newLine:Line = {nodes: set, totalShrink: 0, totalStretch: 0, shortfall: target, options: line.options }
+      for (var n of set) {
+        newLine.totalShrink += n.shrink;
+        newLine.totalStretch += n.stretch;
+        newLine.shortfall -= n.width;
+      }
+      newLine.badness = this.badness(newLine)
+      this.debug("New line is "+ newLine.badness)
+      if (newLine.badness < bestLine.badness) {
+        bestLine = newLine;
+      }
+    }
+    bestLine.ratio = (target-bestLine.shortfall) / target;
+    return bestLine
   }
 
   private debugConsideration(lines: Line[]) {
@@ -407,23 +428,19 @@ export class Linebreaker {
 
   private assignTargetWidths(solution: Solution) {
     for (var line of solution.lines) {
-      console.log("Line", line.nodes.map(x => x.debugText))
       this.assignTargetWidthsToLine(line)
     }
   }
 
   private assignTargetWidthsToLine(line: Line) {
     line.targetWidths = line.nodes.map(n => n.width);
-    console.log("Original widths:"+ line.targetWidths.join(", "))
     if (line.shortfall == 0) {
       return
     }
     var level = 0;
-    console.log("Shortfall: "+ line.shortfall)
     if (line.shortfall > 0) {
       while (line.shortfall > 0) { // We need to expand
         var thisLevelStretch = line.nodes.map( n => n.stretch*(n.stretchContribution[level] || 0));
-        console.log("Level ",level," stretch ", thisLevelStretch)
         var thisLevelTotalStretch = thisLevelStretch.reduce( (a,c) => a+c, 0); // Sum
         if (thisLevelTotalStretch == 0) { break; }
 
@@ -431,14 +448,12 @@ export class Linebreaker {
         if (ratio > 1) { ratio = 1 }
 
         line.targetWidths = line.targetWidths.map( (w,ix) => w + ratio * thisLevelStretch[ix]);
-        console.log("Done stretch ", line.targetWidths)
         line.shortfall -= thisLevelTotalStretch * ratio;
         level = level + 1;
       }
     } else {
       while (line.shortfall < 0) { // We need to expand
         var thisLevelShrink = line.nodes.map( n => n.shrink*(n.shrinkContribution[level] || 0));
-        console.log("Level ",level," shrink ", thisLevelShrink)
         var thisLevelTotalShrink = thisLevelShrink.reduce( (a,c) => a+c, 0); // Sum
         if (thisLevelTotalShrink == 0) { break; }
 
@@ -446,11 +461,27 @@ export class Linebreaker {
         if (ratio > 1) { ratio = 1 }
 
         line.targetWidths = line.targetWidths.map( (w,ix) => w - ratio * thisLevelShrink[ix]);
-        console.log("Done shrink ", line.targetWidths)
         line.shortfall += thisLevelTotalShrink * ratio;
         level = level + 1;
       }
     }
     this.debug("Final widths:"+ line.targetWidths.join(", "))
+  }
+
+  public _cartesian_set(arg) {
+    const r = [];
+    const max = arg.length-1;
+    let helper = (arr, i) => {
+      for (let j=0, l=arg[i].length; j<l; j++) {
+        const a = [...arr];
+        a.push(arg[i][j]);
+        if (i==max)
+            r.push(a);
+        else
+            helper(a, i+1);
+      }
+    }
+    helper([], 0);
+    return r;
   }
 }
