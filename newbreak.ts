@@ -248,7 +248,6 @@ export class Linebreaker {
     for (var thisNodeIx = 0; thisNodeIx < relevant.length ; thisNodeIx++) {
       let thisNode = relevant[thisNodeIx];
       if (thisNode.alternates && thisNode.alternates.length > 0) {
-        console.log("Seen alternate")
         seenAlternate = true;
       }
 

@@ -193,7 +193,6 @@ var Linebreaker = /** @class */ (function () {
         for (var thisNodeIx = 0; thisNodeIx < relevant.length; thisNodeIx++) {
             var thisNode = relevant[thisNodeIx];
             if (thisNode.alternates && thisNode.alternates.length > 0) {
-                console.log("Seen alternate");
                 seenAlternate = true;
             }
             // If we can't break here... don't try to break here.
