@@ -50,9 +50,8 @@ var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
 function makeItSwashy(node) {
   d.cacheComputedStretch = {};
   var nlalt = d.makeText(node.text.text(), $("#testbox2"))
-  nlalt[0].text.attr("style", "font-feature-settings:swsh")
   nlalt[0].text.addClass("swash")
-  nlalt[0].debugText = nlalt[0].debugText+"(swsh)"
+  nlalt[0].text.css("font-feature-settings", "swsh")
   if (nlalt[0].width != node.width) {
     node.alternates = [nlalt[0]];
   }
@@ -63,7 +62,7 @@ d.options.customizeTextNode = function(text, node) {
   var chunks = applyKashidaRules(text);
   // Deal with easy case of single, non-extensible token.
   if (chunks.length == 1 && chunks[0].kashida == false ) {
-    node.stretch = 0; node.shrink = 0; return [node];
+    node.stretch = 0; node.shrink = 0; return [makeItSwashy(node)];
   }
   var seenKash = false;
   for (var cIx in chunks) {

@@ -130,7 +130,7 @@ function textWidth (text:string, elProto: JQuery<HTMLElement>) :number {
   if (!fakeEl) {
     fakeEl = $("<span>").appendTo(document.body).hide()
   }
-  for (var c of ["font-style", "font-variant", "font-weight", "font-size", "font-family", "font-stretch", "font-variation-settings"]) {
+  for (var c of ["font-style", "font-variant", "font-weight", "font-size", "font-family", "font-stretch", "font-variation-settings", "font-feature-settings"]) {
     fakeEl.css(c,elProto.css(c));
   }
   fakeEl.text(text);
