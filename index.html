@@ -55,10 +55,12 @@
   <br><small>
   (0 = justify exclusively with width axis, 1 = justify exclusively with letterspacing)</small>
 </div>
+<!--
 <div class="slidecontainer">
   <label>Hyphenate:</label>
   <input type="checkbox" id="hyphenate">
 </div>
+-->
 <div class="slidecontainer">
   <label>Full Justification:</label>
   <input type="checkbox" id="fulljustify">
@@ -101,9 +103,10 @@ $(".slidecontainer input").on("input", (e) => {
 $(".slidecontainer input").change((e) => {
   var input = $(e.target);
   var id = input[0].id;
-  if (id == "hyphenate") {
-    d.options.hyphenate = !!input.prop('checked');
-  } else if (id == "fulljustify") {
+  // if (id == "hyphenate") {
+  //   d.options.hyphenate = !!input.prop('checked');
+  // }
+  if (id == "fulljustify") {
     d.options.fullJustify = !!input.prop('checked');
   } else {
     var v = (input.val()) / 100.0

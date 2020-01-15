@@ -8,38 +8,33 @@ function makeNodeList(text) {
     for (var _i = 0, _a = text.split(/(\s+)/); _i < _a.length; _i++) {
         var t = _a[_i];
         if (t.match(/\s+/)) {
-            rv.push({ penalty: 0, breakClass: 1, width: 1, stretch: 1, shrink: 0 });
+            rv.push({ penalty: 0, breakable: true, width: 1, stretch: 1, shrink: 0.1, debugText: " " });
         }
         else {
-            for (var _b = 0, _c = t.split(/(-)/); _b < _c.length; _b++) {
-                var frag = _c[_b];
-                if (frag == "-") {
-                    rv.push({ text: "", breakHereText: "-", width: 0, breakHereWidth: 1, breakClass: 1 });
-                }
-                else {
-                    rv.push({ text: frag, breakClass: 0, penalty: 0, width: frag.length, stretch: 0, shrink: 0 });
-                }
-            }
+            rv.push({ text: t, penalty: 0, breakable: false, width: t.length, stretch: 0, shrink: 0 });
         }
     }
-    rv.push({ penalty: 0, breakClass: 1, width: 0, stretch: 1000, shrink: 0 });
+    rv.push({ penalty: 0, breakable: true, width: 0, stretch: 1000, shrink: 0 });
     console.log(rv);
     return rv;
 }
+describe('Line breaker: 012', function () {
+    var nodelist = makeNodeList("012");
+    it('Should return something sensible', function () {
+        var breaker = new newbreak_1.Linebreaker(nodelist, [7]);
+        var answer = breaker.doBreak();
+        chai_1.expect(answer.length).equals(1);
+    });
+});
 describe('Line breaker: 123456 789 012', function () {
     var nodelist = makeNodeList("123456 789 012");
     it('length 7 should split at 3', function () {
         var breaker = new newbreak_1.Linebreaker(nodelist, [7]);
-        breaker.debugging = true;
+        // breaker.debugging = true
         var answer = breaker.doBreak();
-        chai_1.expect(answer).deep.equals([3]);
-    });
-    it('length 10 should split at 5', function () {
-        console.log("NL Length is " + nodelist.length);
-        var breaker = new newbreak_1.Linebreaker(nodelist, [10]);
-        breaker.debugging = true;
-        var answer = breaker.doBreak();
-        chai_1.expect(answer).deep.equals([5]);
+        chai_1.expect(answer.length).equals(2);
+        chai_1.expect(answer[0].nodes.length).equals(2);
+        chai_1.expect(answer[1].nodes.length).equals(4);
     });
 });
 // describe("Line breaker: HTML examples", () => {

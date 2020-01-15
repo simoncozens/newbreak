@@ -30,7 +30,6 @@ var Node = /** @class */ (function () {
 }());
 exports.Node = Node;
 var INF_BAD = 10000;
-var LINE_PENALTY = 10;
 /**
  * The main line breaking algorithm
  * @class Linebreaker
@@ -56,9 +55,51 @@ var Linebreaker = /** @class */ (function () {
             this.nodes.push(__assign({}, n));
         }
         // Add dummy node to end.
-        this.nodes.push({ width: 0, breakClass: 1, penalty: 0 });
+        this.nodes.push({ width: 0, breakable: true, penalty: 0 });
+        this.prepareNodes();
         this.memoizeCache = {};
     }
+    /**
+      Sets up helpful shortcuts on node objects
+    */
+    Linebreaker.prototype.prepareNodes = function () {
+        for (var thisNodeIx = 0; thisNodeIx < this.nodes.length; thisNodeIx++) {
+            var n = this.nodes[thisNodeIx];
+            this.prepareNode(n, thisNodeIx);
+            if (n.alternates) {
+                for (var _i = 0, _a = n.alternates; _i < _a.length; _i++) {
+                    var a = _a[_i];
+                    this.prepareNode(a, thisNodeIx);
+                }
+            }
+        }
+    };
+    Linebreaker.prototype.prepareNode = function (n, ix) {
+        n.originalIndex = ix;
+        if (n.penalty < 0) {
+            n.anyNegativePenalties = true;
+        }
+        if (n.breakable) {
+            n.anyBreakable = true;
+        }
+        if (!n.stretchContribution) {
+            n.stretchContribution = [1];
+        }
+        if (!n.shrinkContribution) {
+            n.shrinkContribution = [1];
+        }
+        if (n.alternates) {
+            for (var _i = 0, _a = n.alternates; _i < _a.length; _i++) {
+                var a = _a[_i];
+                if (a.penalty < 0) {
+                    n.anyNegativePenalties = true;
+                }
+                if (a.breakable) {
+                    n.anyBreakable = true;
+                }
+            }
+        }
+    };
     /**
      * Run the break algorithm.
      * You may want to feed the output of this into the `ratios` method below.
@@ -66,102 +107,31 @@ var Linebreaker = /** @class */ (function () {
      */
     Linebreaker.prototype.doBreak = function (options) {
         if (options === void 0) { options = {}; }
-        var maxBreakClass = Math.max.apply(Math, this.nodes.map(function (x) { return x.breakClass; }));
-        // Basically we run through the break classes from highest to lowest,
-        // trying to `findBreakpoints` for each class.
-        for (var i = maxBreakClass; i > 0; i--) {
-            this.debug("Trying breaks of class " + i);
-            var best = this.findBreakpoints(0, __assign({ class: i, start: 0, end: this.nodes.length - 1 }, options));
-            if (best.points.length > 0) {
-                return best.points;
-            }
-        }
-        this.debug("Nothing found, giving up");
-        return [];
-    };
-    // Not all nodes can be broken at, if their class is below the minimum
-    // class that we are trying for right now. (Or of course if their class
-    // is zero, in which case they can't be broken at at all.) So we reduce
-    // the problem space by merging any adjacent non-breakable nodes, creating
-    // a new list of nodes which collates the widths of the non-breakables.
-    Linebreaker.prototype.findRelevantNodes = function (minClass, start, end) {
-        var relevant = [];
-        for (var i = start; i <= end; i++) {
-            var thisNode = __assign({}, this.nodes[i]);
-            if (thisNode.breakClass < minClass) { // We are not interested in breaking here
-                // If we're just starting out, or if we have just changed from a
-                // non-interesting node to an interesting one, then we need to
-                // put a new node onto our list. We keep track of where it used to be.
-                if (relevant.length == 0 || relevant[relevant.length - 1].breakClass >= minClass) {
-                    thisNode.originalIndex = i;
-                    relevant.push(thisNode);
-                }
-                else {
-                    // We aren't just starting out, and the current node is just as
-                    // non-breakable as the previous node, so we add our widths together.
-                    relevant[relevant.length - 1].width += thisNode.width;
-                    relevant[relevant.length - 1].stretch += thisNode.stretch;
-                    relevant[relevant.length - 1].shrink += thisNode.shrink;
-                }
-            }
-            else {
-                // This is a potential breakpoint, so should not be merged.
-                thisNode.originalIndex = i;
-                relevant.push(thisNode);
-            }
-        }
-        return relevant;
-    };
-    // The following three functions are classic TeX - given a shortfall and an amount
-    // stretchability or shrinkability available, provide a metric of how bad this breakpoint is.
-    Linebreaker.prototype.badnessFunction = function (t, s) {
-        if (t == 0)
-            return 0;
-        var bad = Math.floor(100 * Math.pow((t / s), 3));
-        return bad > INF_BAD ? INF_BAD : bad;
-    };
-    Linebreaker.prototype.computeBadness = function (shortfall, stretch, shrink, lineNo) {
-        this.debug(" Shortfall: " + shortfall + ", stretch: " + stretch + ", shrink: " + shrink, lineNo);
-        if (shortfall > 0) {
-            if (shortfall > 110 && stretch < 25) {
-                return INF_BAD;
-            }
-            else {
-                return this.badnessFunction(shortfall, stretch);
-            }
-        }
-        else {
-            shortfall = -shortfall;
-            if (shortfall > shrink) {
-                return INF_BAD + 1;
-            }
-            else {
-                return this.badnessFunction(shortfall, shrink);
-            }
-        }
-    };
-    Linebreaker.prototype.considerDemerits = function (badness, thisNode) {
-        var d = (badness + LINE_PENALTY);
-        if (Math.abs(d) >= 10000) {
-            d = 100000000;
-        }
-        else {
-            d = d * d;
-        }
-        if (thisNode.penalty) {
-            this.debug("Node " + (thisNode.debugText || thisNode.text) + " has penalty " + thisNode.penalty);
-            if (thisNode.penalty > 0) {
-                d += thisNode.penalty * thisNode.penalty;
-            }
-            else {
-                d -= thisNode.penalty * thisNode.penalty;
-            }
-        }
-        return d;
+        var defaultOptions = {
+            start: 0,
+            end: this.nodes.length - 1,
+            fullJustify: false,
+            unacceptableRatio: 0.5,
+            linePenalty: 10
+        };
+        var best = this.findBreakpoints(0, __assign({}, options, defaultOptions));
+        this.assignTargetWidths(best);
+        this.debug("Final best consideration:");
+        this.debugConsideration(best.lines);
+        return best.lines;
     };
     // A shortcut for finding the target length of the given line number.
     Linebreaker.prototype.targetFor = function (lineNo) {
         return this.hsize[lineNo > this.hsize.length - 1 ? this.hsize.length - 1 : lineNo];
+    };
+    Linebreaker.prototype.hasAnyNegativePenalties = function (nodelist) {
+        for (var _i = 0, nodelist_1 = nodelist; _i < nodelist_1.length; _i++) {
+            var n = nodelist_1[_i];
+            if (n.anyNegativePenalties) {
+                return true;
+            }
+        }
+        return false;
     };
     /*
       Finally we arrive at the core of the algorithm. The basic principle is
@@ -187,7 +157,6 @@ var Linebreaker = /** @class */ (function () {
       simplicity.
     */
     Linebreaker.prototype.findBreakpoints = function (lineNo, options) {
-        var relevant = this.findRelevantNodes(options.class, options.start, options.end);
         var target = this.targetFor(lineNo);
         /*
         One of the reasons for *not* using a recursive solution is that
@@ -201,14 +170,16 @@ var Linebreaker = /** @class */ (function () {
             this.debug(this.memoizeCache[key], lineNo);
             return this.memoizeCache[key];
         }
+        var relevant = this.nodes.slice(options.start, options.end + 1);
         // This represents how far along the line we are towards the target width.
         var curWidth = 0;
         var curStretch = 0;
         var curShrink = 0;
         var considerations = [];
         var bestBadness = Infinity;
-        var anyNegativePenalties = relevant.some(function (e) { return e.penalty < 0; });
+        var seenAlternate = false;
         var that = this;
+        var node;
         var addNodeToTotals = function (n) {
             that.debug("Adding width " + n.width + " for node " + (n.debugText || n.text || ""), lineNo);
             curWidth += n.width;
@@ -219,168 +190,145 @@ var Linebreaker = /** @class */ (function () {
         Now we walk through the relevant nodes, looking for feasible breakpoints
         and keeping track of how close we are to the target.
         */
-        for (var _i = 0, relevant_1 = relevant; _i < relevant_1.length; _i++) {
-            var thisNode = relevant_1[_i];
-            if (thisNode.breakClass >= options.class) {
-                this.debug("Node " + thisNode.originalIndex + " " + (thisNode.debugText || thisNode.text || "") + " is possible", lineNo);
-                // As we're looking at the possibility of breaking here, add
-                // any additional discretionary width (eg hyphens). We'll take it
-                // out again later if we decide not to make the break.
-                if (thisNode.breakHereWidth) {
-                    curWidth += thisNode.breakHereWidth;
-                    curShrink += thisNode.breakHereShrink || 0;
-                    curStretch += thisNode.breakHereStretch || 0;
-                }
-                this.debug(" Target: " + target + ". Current width: " + curWidth, lineNo);
-                // If we're a long way from the end and shrinking/stretching to get
-                // there would be horrible, don't even both investigating this breakpoint
-                // unless there is no other choice.
-                if (target - curWidth < 0 && target - curWidth < -3 * curShrink && !options.fullJustify) {
-                    this.debug(" Too shrunk " + (target - curWidth) + " needed, " + 3 * curShrink + " available; not bothering", lineNo);
-                    addNodeToTotals(thisNode);
-                    continue;
-                }
-                if (target - curWidth > 0 && target - curWidth > 3 * curStretch && !options.fullJustify) {
-                    this.debug(" Too stretched " + (target - curWidth) + " needed, " + 3 * curStretch + " available; not bothering", lineNo);
-                    addNodeToTotals(thisNode);
-                    continue;
-                }
-                // Find out how bad this potential breakpoint is.
-                var badness = this.computeBadness(target - curWidth, curStretch, curShrink, lineNo);
-                badness = this.considerDemerits(badness, thisNode);
-                this.debug(" Badness was " + badness, lineNo);
-                if (bestBadness < badness && !anyNegativePenalties) {
-                    // We have a better option already, and we have no chance
-                    // to improve this option, don't bother.
-                }
-                else if (relevant.length == 1) {
-                    // We aren't going to find any other nodes. Don't bother
+        for (var thisNodeIx = 0; thisNodeIx < relevant.length; thisNodeIx++) {
+            var thisNode = relevant[thisNodeIx];
+            // If we can't break here... don't try to break here.
+            this.debug("Node " + thisNode.originalIndex + " " + (thisNode.debugText || thisNode.text || ""), lineNo);
+            if (!thisNode.anyBreakable) {
+                addNodeToTotals(thisNode);
+                continue;
+            }
+            this.debug(" Target: " + target + ". Current width: " + curWidth + ". Current stretch: " + curStretch, lineNo);
+            var lastLine = thisNode.originalIndex >= this.nodes[this.nodes.length - 1].originalIndex - 2;
+            // If we're a long way from the end and stretching to get there would be horrible,
+            // don't even bother investigating this breakpoint.
+            if ((curWidth / target < options.unacceptableRatio ||
+                curWidth / target > (2 - options.unacceptableRatio))
+                && !lastLine) {
+                this.debug(" Too far", lineNo);
+                addNodeToTotals(thisNode);
+                continue;
+            }
+            if (thisNode.alternates && thisNode.alternates.length > 0) {
+                seenAlternate = true;
+            }
+            // We have a potential breakpoint. Build a Line node
+            // Find out how bad this potential breakpoint is.
+            this.debug("Possibility!", lineNo);
+            var line = {
+                nodes: relevant.slice(0, thisNodeIx),
+                ratio: curWidth / target,
+                shortfall: target - curWidth,
+                totalShrink: curShrink,
+                totalStretch: curStretch,
+                options: options
+            };
+            line.badness = this.badness(line);
+            if (seenAlternate) {
+                this.tryToImprove(line);
+            }
+            // If we are at e.g. a hyphenation point (not breakable but has breakable
+            // alternate) then only consider this is if the last node has become breakable
+            // through considering the alternates
+            if (!thisNode.breakable && !(line.nodes[line.nodes.length - 1].breakable)) {
+                that.debug("Adding width " + thisNode.width + " for node " + (thisNode.debugText || thisNode.text || ""), lineNo);
+                curWidth += thisNode.width;
+                addNodeToTotals(thisNode);
+                continue;
+            }
+            var badness = line.badness;
+            this.debug(" Badness was " + badness, lineNo);
+            var anyNegativePenalties = this.hasAnyNegativePenalties(relevant);
+            if (bestBadness < badness && !anyNegativePenalties) {
+                // We have a better option already, and we have no chance
+                // to improve this option, don't bother.
+            }
+            else if (relevant.length == 1) {
+                // We aren't going to find any other nodes. Don't bother
+            }
+            else {
+                // It's worth a further look at this breakpoint.
+                // If we have nodes A...Z and we test a break at C, we need to work
+                // out the best way to break the sub-paragraph D...Z.
+                // Remembering that "Breakpoint path = Breakpoint for first line
+                // + breakpoint path for remainder of paragraph", first we make
+                // a line set which holds the first line...
+                var newConsideration = {
+                    totalBadness: badness,
+                    lines: [line]
+                };
+                if (thisNode.originalIndex + 1 < options.end) {
+                    this.debug("Recursing, now start at " + (thisNode.originalIndex + 1), lineNo);
+                    var recursed = this.findBreakpoints(lineNo + 1, __assign({}, options, { start: thisNode.originalIndex + 1, end: options.end }));
+                    this.debug("In that recursion, total badness = " + recursed.totalBadness);
+                    // ...and then we add to it the current solution
+                    newConsideration.lines = newConsideration.lines.concat(recursed.lines);
+                    newConsideration.totalBadness += recursed.totalBadness;
+                    // Save this option if it's better than we've seen already,
+                    // to save recursing into worse ones.
+                    if (newConsideration.totalBadness < bestBadness) {
+                        bestBadness = newConsideration.totalBadness;
+                    }
+                    considerations.push(newConsideration);
                 }
                 else {
-                    // It's worth a further look at this breakpoint.
-                    // If we have nodes A...Z and we test a break at C, we need to work
-                    // out the best way to break the sub-paragraph D...Z.
-                    // Remembering that "Breakpoint path = Breakpoint for first line
-                    // + breakpoint path for remainder of paragraph", first we make
-                    // a breakpoint set which holds the breakpoint for the first line...
-                    var newConsideration = {
-                        totalBadness: badness,
-                        points: [thisNode.originalIndex]
-                    };
-                    if (thisNode.originalIndex + 1 < options.end) {
-                        this.debug("Recursing, now start at " + (thisNode.originalIndex + 1), lineNo);
-                        var recursed = this.findBreakpoints(lineNo + 1, {
-                            class: options.class,
-                            start: thisNode.originalIndex + 1,
-                            end: options.end,
-                            fullJustify: options.fullJustify
-                        });
-                        this.debug("In that recursion, total badness = " + recursed.totalBadness);
-                        // ...and then we add to it the breakpoints for the rest of the paragraph.
-                        newConsideration.points = newConsideration.points.concat(recursed.points);
-                        newConsideration.totalBadness += recursed.totalBadness;
-                        // Save this option if it's better than we've seen already,
-                        // to save recursing into worse ones.
-                        if (newConsideration.totalBadness < bestBadness) {
-                            bestBadness = newConsideration.totalBadness;
-                        }
-                        considerations.push(newConsideration);
-                    }
-                }
-                // Remove the discretionary when we consider future breakpoints.
-                if (thisNode.breakHereWidth) {
-                    curWidth -= thisNode.breakHereWidth;
-                    curShrink -= thisNode.breakHereShrink || 0;
-                    curStretch -= thisNode.breakHereStretch || 0;
+                    considerations.push(newConsideration);
                 }
             }
             addNodeToTotals(thisNode);
         }
         // If we found nothing, give up.
         if (considerations.length < 1) {
-            return { totalBadness: INF_BAD * INF_BAD, points: [] };
+            return { totalBadness: INF_BAD * INF_BAD, lines: [] };
         }
         // Otherwise, find the best of the bunch.
+        this.debug("Choosing between considerations:");
+        for (var _i = 0, considerations_1 = considerations; _i < considerations_1.length; _i++) {
+            var c = considerations_1[_i];
+            this.debug("With badness " + c.totalBadness + ": ");
+            this.debugConsideration(c.lines);
+        }
         var best = considerations.reduce(function (a, b) { return a.totalBadness <= b.totalBadness ? a : b; });
-        this.debug("Best answer for " + key + " was: " + best.points, lineNo);
-        this.debugConsideration(options, best.points);
+        this.debug("Best answer for " + key + " was:", lineNo);
+        this.debugConsideration(best.lines);
         this.debug(" with badness " + best.totalBadness, lineNo);
         // Store it in the memoize cache for next time.
         this.memoizeCache[key] = best;
         return best;
     };
-    Linebreaker.prototype.debugConsideration = function (options, origpoints) {
-        var lines = [""];
-        this.debug("---");
-        var points = origpoints.slice(0);
-        for (var i = options.start; i < options.end; i++) {
-            var debugText = this.nodes[i].debugText || this.nodes[i].text;
-            lines[lines.length - 1] += debugText || (this.nodes[i].width > 0 ? " " : "");
-            if (i == points[0]) {
-                if (this.nodes[i].breakHereText) {
-                    lines[lines.length - 1] += this.nodes[i].breakHereText;
-                }
-                points.shift();
-                lines.push("");
-            }
+    Linebreaker.prototype.badness = function (line) {
+        var bad = 0;
+        if (line.shortfall == 0) {
+            bad = 0;
         }
+        else if (line.shortfall > 0) {
+            // XXX use stretch/shrink penalties here instead
+            bad = Math.floor(100 * Math.pow((line.shortfall / line.totalStretch), 3));
+        }
+        else {
+            bad = Math.floor(100 * Math.pow((-line.shortfall / line.totalShrink), 3));
+        }
+        // consider also penalties. Break penalty:
+        bad += line.nodes[line.nodes.length - 1].penalty;
+        // Line penalty
+        bad += line.options.linePenalty;
+        // Any substitutions
+        for (var _i = 0, _a = line.nodes; _i < _a.length; _i++) {
+            var n = _a[_i];
+            bad += n.substitutionPenalty || 0;
+        }
+        return bad;
+    };
+    Linebreaker.prototype.tryToImprove = function (line) {
+        console.log("UNIMPLEMENTED");
+    };
+    Linebreaker.prototype.debugConsideration = function (lines) {
+        this.debug("---");
         for (var _i = 0, lines_1 = lines; _i < lines_1.length; _i++) {
             var l = lines_1[_i];
-            this.debug(l);
+            this.debug(l.ratio.toFixed(3) + " " + l.nodes.map(function (a) { return a.debugText || a.text || ""; }).join(""));
         }
         this.debug("---");
-    };
-    /**
-     * Given a set of breakpoints, compute the stretch/shrink ratio for
-     * each line, and the nodes which make up each line. This is what you
-     * would feed to the justification engine.
-     * @param {number[]} pointSet: list of nodes to be broken at
-     * @returns {Ratio[]} array of start and end node indexes and ratio to apply.
-     **/
-    Linebreaker.prototype.ratios = function (pointSet) {
-        var rv = [{ start: 0, end: 0, ratio: 0 }];
-        var curWidth = 0;
-        var curStretch = 0;
-        var curShrink = 0;
-        var lineNo = 0;
-        // Copy the pointset so we can modify it.
-        var ps = pointSet.slice();
-        for (var i = 0; i < this.nodes.length; i++) {
-            var target = this.targetFor(lineNo);
-            if (ps[0] == i || i == this.nodes.length - 1) {
-                // We're at a breakpoint.
-                // If we're breaking at a discretionary, take that into account.
-                curWidth += this.nodes[i].breakHereWidth || 0;
-                curStretch += this.nodes[i].breakHereStretch || 0;
-                curShrink += this.nodes[i].breakHereShrink || 0;
-                // Work out the shortfall and ratio
-                var shortfall = target - curWidth;
-                if (shortfall > 0) {
-                    rv[rv.length - 1].ratio = shortfall / curStretch;
-                }
-                else {
-                    rv[rv.length - 1].ratio = shortfall / curShrink;
-                }
-                this.debug("Line " + lineNo + ": target " + target + ", break width " + curWidth + " plus " + curStretch + " minus " + curShrink + ", ratio " + rv[rv.length - 1].ratio);
-                rv[rv.length - 1].end = i;
-                // Move onto finding next breakpoint and start again.
-                ps.shift();
-                rv.push({ start: i + 1, end: 0, ratio: 0 });
-                curWidth = 0;
-                curStretch = 0;
-                curShrink = 0;
-            }
-            else {
-                curWidth += this.nodes[i].width || 0;
-                curStretch += this.nodes[i].stretch || 0;
-                curShrink += this.nodes[i].shrink || 0;
-            }
-        }
-        // We added a Ratio node on the end to store information
-        // about the *next* line, but obviously at the end there
-        // isn't going to be a next line, so get rid of it again.
-        rv.pop();
-        return rv;
     };
     Linebreaker.prototype.debug = function (msg, lineNo) {
         if (lineNo === void 0) { lineNo = 0; }
@@ -388,6 +336,59 @@ var Linebreaker = /** @class */ (function () {
             var spacer = new Array(lineNo + 1).join(" + ");
             console.log(spacer + msg);
         }
+    };
+    Linebreaker.prototype.assignTargetWidths = function (solution) {
+        for (var _i = 0, _a = solution.lines; _i < _a.length; _i++) {
+            var line = _a[_i];
+            console.log("Line", line.nodes.map(function (x) { return x.debugText; }));
+            this.assignTargetWidthsToLine(line);
+        }
+    };
+    Linebreaker.prototype.assignTargetWidthsToLine = function (line) {
+        line.targetWidths = line.nodes.map(function (n) { return n.width; });
+        console.log("Original widths:" + line.targetWidths.join(", "));
+        if (line.shortfall == 0) {
+            return;
+        }
+        var level = 0;
+        console.log("Shortfall: " + line.shortfall);
+        if (line.shortfall > 0) {
+            while (line.shortfall > 0) { // We need to expand
+                var thisLevelStretch = line.nodes.map(function (n) { return n.stretch * (n.stretchContribution[level] || 0); });
+                console.log("Level ", level, " stretch ", thisLevelStretch);
+                var thisLevelTotalStretch = thisLevelStretch.reduce(function (a, c) { return a + c; }, 0); // Sum
+                if (thisLevelTotalStretch == 0) {
+                    break;
+                }
+                var ratio = line.shortfall / thisLevelTotalStretch;
+                if (ratio > 1) {
+                    ratio = 1;
+                }
+                line.targetWidths = line.targetWidths.map(function (w, ix) { return w + ratio * thisLevelStretch[ix]; });
+                console.log("Done stretch ", line.targetWidths);
+                line.shortfall -= thisLevelTotalStretch * ratio;
+                level = level + 1;
+            }
+        }
+        else {
+            while (line.shortfall < 0) { // We need to expand
+                var thisLevelShrink = line.nodes.map(function (n) { return n.shrink * (n.shrinkContribution[level] || 0); });
+                console.log("Level ", level, " shrink ", thisLevelShrink);
+                var thisLevelTotalShrink = thisLevelShrink.reduce(function (a, c) { return a + c; }, 0); // Sum
+                if (thisLevelTotalShrink == 0) {
+                    break;
+                }
+                var ratio = -line.shortfall / thisLevelTotalShrink;
+                if (ratio > 1) {
+                    ratio = 1;
+                }
+                line.targetWidths = line.targetWidths.map(function (w, ix) { return w - ratio * thisLevelShrink[ix]; });
+                console.log("Done shrink ", line.targetWidths);
+                line.shortfall += thisLevelTotalShrink * ratio;
+                level = level + 1;
+            }
+        }
+        this.debug("Final widths:" + line.targetWidths.join(", "));
     };
     return Linebreaker;
 }());

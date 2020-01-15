@@ -4,7 +4,7 @@
  */
 
 import * as $ from "jquery";
-import { Node, Linebreaker } from './newbreak';
+import { Node, Linebreaker, Line } from './newbreak';
 
 /** You can provide a hash of options to the DomBreak object to
  *  control various aspects of its behaviour:
@@ -194,27 +194,12 @@ export class DomBreak {
       text: sp,
       debugText: " ",
       penalty: 0,
-      breakClass: 1,
+      stretchContribution: [1,0],
+      shrinkContribution: [1,0],
+      breakable: true,
       width: sp.width(),
       stretch: this.options.spaceStretch * sp.width(),
       shrink:  this.options.spaceShrink  * sp.width()
-    } as Node;
-  }
-
-  // A hyphen is an empty node, but with discretionary width and text.
-  // It can't stretch.
-  public makeHyphen(domnode): Node {
-    var width = textWidth("-", domnode)
-
-    var sp1 = $("<span/>")
-    sp1.addClass("hyphen");
-    return {
-      debugText: "",
-      text:sp1,
-      breakHereText: "-",
-      width:0,
-      breakHereWidth: width,
-      breakClass:1
     } as Node;
   }
 
@@ -227,7 +212,7 @@ export class DomBreak {
       {
         debugText: " ",
         text: sp,
-        breakClass: 0,
+        breakable: false,
         penalty: 0,
         width: sp.width(),
         stretch: 100000,
@@ -239,7 +224,7 @@ export class DomBreak {
     {
       debugText: "<BR!>\n",
       text: b,
-      breakClass: 1,
+      breakable: true,
       penalty: -10000,
       width: 0,
     } as Node)
@@ -271,8 +256,10 @@ export class DomBreak {
     var node = {
       debugText: t,
       text: sp,
-      breakClass:0,
+      breakable: false,
       penalty:0,
+      stretchContribution: [0,1],
+      shrinkContribution: [0,1],
       width: width,
       stretch: stretch,
       shrink: shrink
@@ -368,12 +355,12 @@ export class DomBreak {
             nodelist.push(n);
             domnode.append(n.text);
           }
-          if (idx != fragments.length-1) {
-            // Add hyphens between each fragment.
-            n = this.makeHyphen(domnode);
-            nodelist.push(n);
-            domnode.append(n.text);
-          }
+          // if (idx != fragments.length-1) {
+          //   // Add hyphens between each fragment.
+          //   n = this.makeHyphen(domnode);
+          //   nodelist.push(n);
+          //   domnode.append(n.text);
+          // }
         }
       }
     }
@@ -420,81 +407,38 @@ export class DomBreak {
     var nodelist = this.nodelist;
     var domnode = this.domNode;
     var breaker = new Linebreaker(nodelist, [domnode.width()])
-    breaker.debugging = false
-    var points = breaker.doBreak({fullJustify: this.options.fullJustify});
-    var ratios = breaker.ratios(points)
+    var lines:Line[] = breaker.doBreak({fullJustify: this.options.fullJustify});
 
-    // Now we have our breakpoints, we have to actually lay the thing out,
-    // which turns out to be the hard bit.
-
+    domnode.find("br").remove()
     // Stretch and shrink each node as appropriate. We'll add linebreaks later.
-    for (var p = 0; p < nodelist.length-1; p++) {
-      var el = (nodelist[p].text as JQuery<HTMLSpanElement>);
-
-      if (p == ratios[0].end) {
-        // Discretionaries at the end of the line have to be replaced
-        // with their break text (the hyphen)
-        if (el.hasClass("hyphen")) {
-          el.text(nodelist[p].breakHereText);
-        }
-      } else if (el.hasClass("hyphen")) {
-        // Discretionaries *not* at the end of the line have to be empty.
-          el.text("");
-        }
-      if (p > ratios[0].end) {
-        // Done with this line, move to the next.
-        ratios.shift()
-      }
-
-      // First deal with nodes which need to be shrunk.
-      if (ratios[0].ratio < 0 && nodelist[p].shrink > 0) {
-        var shrinkRequired = nodelist[p].shrink * -ratios[0].ratio
-        var shrunk = nodelist[p].width - shrinkRequired;
+    for (var l of lines) {
+      for (var ix = 0; ix < l.nodes.length ; ix++) {
+        var n = l.nodes[ix];
+        var el = (n.text as JQuery<HTMLSpanElement>);
         if (el.hasClass("text")) {
           // Text gets shrunk with the variable font CSS rule.
-          var shrunkpercent = shrunk / nodelist[p].width * 100
-          this.setToWidth(el, shrunk)
+          this.setToWidth(el, l.targetWidths[ix]);
           el.css("letter-spacing", "normal");
           if (this.options.colorize) {
-            var redness = ((shrinkRequired/nodelist[p].width) * 4 * 255).toFixed(0)
-            el.css("color", "rgb("+redness+",0,0)")
+            var stretchShrink = (n.width-l.targetWidths[ix]) / n.width
+            var color;
+            if (stretchShrink > 0) {
+              var redness = (stretchShrink * 4 * 255).toFixed(0);
+              color = "rgb("+redness+",0,0)"
+            } else {
+              var greenness = -(stretchShrink * 4 * 255).toFixed(0);
+              color = "rgb(0,"+greenness+",0)"
+            }
+            el.css("color", color)
           }
         } else {
           // Glue gets shrunk by setting its width directly.
-          el.css("width", shrunk+"px")
+          el.css("width", l.targetWidths[ix]+"px")
         }
-      } else if (ratios[0].ratio > 0 && nodelist[p].stretch > 0) {
-        // And similarly for things which need to be stretched.
-        var stretchRequired = nodelist[p].stretch * ratios[0].ratio
-        var stretched = nodelist[p].width + stretchRequired
-        if (el.hasClass("text")) {
-          // There are two ways of stretching, so we divide the job
-          // between the two.
-          var vfContribution = (1 - this.options.textLetterSpacingPriority) * stretchRequired
-          var lsContribution = (this.options.textLetterSpacingPriority) * stretchRequired
-          var lsStretched = lsContribution / (el.text().length-1)
-          // el.css("font-stretch", (vfStretched)+"%")
-          this.setToWidth(el, nodelist[p].width + vfContribution)
-          el.css("letter-spacing", lsStretched+"px")
-          if (this.options.colorize) {
-            var greenness = ((stretchRequired/nodelist[p].width) * 4 * 255).toFixed(0)
-            el.css("color", "rgb(0,"+greenness+",0)")
-          }
-        } else {
-          el.css("width", stretched+"px")
+        if (ix == l.nodes.length-1) {
+          el.next().after($("<br>"));
         }
-      } else {
-        // On the rare occasion that a line is perfect, reset it to natural.
-        el.css("font-stretch", "");
-        el.css("color", "black");
-        el.css("letter-spacing", "normal");
       }
-    }
-    // Remove any breaks we added on previous times.
-    domnode.find("br").remove()
-    // Now we add the breaks.
-    for (let p of points) {
-      (nodelist[p].text as JQuery<HTMLSpanElement>).after($("<br>"))
     }
   }
 }
