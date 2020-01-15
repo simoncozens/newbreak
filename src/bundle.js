@@ -10682,13 +10682,15 @@ var DomBreak = /** @class */ (function () {
         var breaker = new newbreak_1.Linebreaker(nodelist, [domnode.width()]);
         var lines = breaker.doBreak({ fullJustify: this.options.fullJustify });
         domnode.find("br").remove();
+        domnode.children("span").remove();
         // Stretch and shrink each node as appropriate. We'll add linebreaks later.
         for (var _i = 0, lines_1 = lines; _i < lines_1.length; _i++) {
             var l = lines_1[_i];
             for (var ix = 0; ix < l.nodes.length; ix++) {
                 var n = l.nodes[ix];
                 var el = n.text;
-                if (el.hasClass("text")) {
+                domnode.append(el);
+                if (el.hasClass("text") && (n.stretch > 0 || n.shrink > 0)) {
                     // Text gets shrunk with the variable font CSS rule.
                     this.setToWidth(el, l.targetWidths[ix]);
                     el.css("letter-spacing", "normal");
@@ -10711,7 +10713,8 @@ var DomBreak = /** @class */ (function () {
                     el.css("width", l.targetWidths[ix] + "px");
                 }
                 if (ix == l.nodes.length - 1) {
-                    el.next().after($("<br>"));
+                    // el.next().after($("<br>"));
+                    domnode.append($("<br>"));
                 }
             }
         }
@@ -10915,6 +10918,10 @@ var Linebreaker = /** @class */ (function () {
         */
         for (var thisNodeIx = 0; thisNodeIx < relevant.length; thisNodeIx++) {
             var thisNode = relevant[thisNodeIx];
+            if (thisNode.alternates && thisNode.alternates.length > 0) {
+                console.log("Seen alternate");
+                seenAlternate = true;
+            }
             // If we can't break here... don't try to break here.
             this.debug("Node " + thisNode.originalIndex + " " + (thisNode.debugText || thisNode.text || ""), lineNo);
             if (!thisNode.anyBreakable) {
@@ -10932,9 +10939,6 @@ var Linebreaker = /** @class */ (function () {
                 addNodeToTotals(thisNode);
                 continue;
             }
-            if (thisNode.alternates && thisNode.alternates.length > 0) {
-                seenAlternate = true;
-            }
             // We have a potential breakpoint. Build a Line node
             // Find out how bad this potential breakpoint is.
             this.debug("Possibility!", lineNo);
@@ -10948,7 +10952,7 @@ var Linebreaker = /** @class */ (function () {
             };
             line.badness = this.badness(line);
             if (seenAlternate) {
-                this.tryToImprove(line);
+                line = this.tryToImprove(line, target);
             }
             // If we are at e.g. a hyphenation point (not breakable but has breakable
             // alternate) then only consider this is if the last node has become breakable
@@ -11042,8 +11046,28 @@ var Linebreaker = /** @class */ (function () {
         }
         return bad;
     };
-    Linebreaker.prototype.tryToImprove = function (line) {
-        console.log("UNIMPLEMENTED");
+    Linebreaker.prototype.tryToImprove = function (line, target) {
+        var nodesWithAlternates = line.nodes.map(function (n) { return [n].concat((n.alternates || [])); });
+        var set;
+        var bestLine = line;
+        this.debug("Trying to improve, base badness is " + line.badness);
+        for (var _i = 0, _a = this._cartesian_set(nodesWithAlternates); _i < _a.length; _i++) {
+            set = _a[_i];
+            var newLine = { nodes: set, totalShrink: 0, totalStretch: 0, shortfall: target, options: line.options };
+            for (var _b = 0, set_1 = set; _b < set_1.length; _b++) {
+                var n = set_1[_b];
+                newLine.totalShrink += n.shrink;
+                newLine.totalStretch += n.stretch;
+                newLine.shortfall -= n.width;
+            }
+            newLine.badness = this.badness(newLine);
+            this.debug("New line is " + newLine.badness);
+            if (newLine.badness < bestLine.badness) {
+                bestLine = newLine;
+            }
+        }
+        bestLine.ratio = (target - bestLine.shortfall) / target;
+        return bestLine;
     };
     Linebreaker.prototype.debugConsideration = function (lines) {
         this.debug("---");
@@ -11063,22 +11087,18 @@ var Linebreaker = /** @class */ (function () {
     Linebreaker.prototype.assignTargetWidths = function (solution) {
         for (var _i = 0, _a = solution.lines; _i < _a.length; _i++) {
             var line = _a[_i];
-            console.log("Line", line.nodes.map(function (x) { return x.debugText; }));
             this.assignTargetWidthsToLine(line);
         }
     };
     Linebreaker.prototype.assignTargetWidthsToLine = function (line) {
         line.targetWidths = line.nodes.map(function (n) { return n.width; });
-        console.log("Original widths:" + line.targetWidths.join(", "));
         if (line.shortfall == 0) {
             return;
         }
         var level = 0;
-        console.log("Shortfall: " + line.shortfall);
         if (line.shortfall > 0) {
             while (line.shortfall > 0) { // We need to expand
                 var thisLevelStretch = line.nodes.map(function (n) { return n.stretch * (n.stretchContribution[level] || 0); });
-                console.log("Level ", level, " stretch ", thisLevelStretch);
                 var thisLevelTotalStretch = thisLevelStretch.reduce(function (a, c) { return a + c; }, 0); // Sum
                 if (thisLevelTotalStretch == 0) {
                     break;
@@ -11088,7 +11108,6 @@ var Linebreaker = /** @class */ (function () {
                     ratio = 1;
                 }
                 line.targetWidths = line.targetWidths.map(function (w, ix) { return w + ratio * thisLevelStretch[ix]; });
-                console.log("Done stretch ", line.targetWidths);
                 line.shortfall -= thisLevelTotalStretch * ratio;
                 level = level + 1;
             }
@@ -11096,7 +11115,6 @@ var Linebreaker = /** @class */ (function () {
         else {
             while (line.shortfall < 0) { // We need to expand
                 var thisLevelShrink = line.nodes.map(function (n) { return n.shrink * (n.shrinkContribution[level] || 0); });
-                console.log("Level ", level, " shrink ", thisLevelShrink);
                 var thisLevelTotalShrink = thisLevelShrink.reduce(function (a, c) { return a + c; }, 0); // Sum
                 if (thisLevelTotalShrink == 0) {
                     break;
@@ -11106,12 +11124,27 @@ var Linebreaker = /** @class */ (function () {
                     ratio = 1;
                 }
                 line.targetWidths = line.targetWidths.map(function (w, ix) { return w - ratio * thisLevelShrink[ix]; });
-                console.log("Done shrink ", line.targetWidths);
                 line.shortfall += thisLevelTotalShrink * ratio;
                 level = level + 1;
             }
         }
         this.debug("Final widths:" + line.targetWidths.join(", "));
+    };
+    Linebreaker.prototype._cartesian_set = function (arg) {
+        var r = [];
+        var max = arg.length - 1;
+        var helper = function (arr, i) {
+            for (var j = 0, l = arg[i].length; j < l; j++) {
+                var a = arr.slice();
+                a.push(arg[i][j]);
+                if (i == max)
+                    r.push(a);
+                else
+                    helper(a, i + 1);
+            }
+        };
+        helper([], 0);
+        return r;
     };
     return Linebreaker;
 }());
