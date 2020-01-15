@@ -266,7 +266,11 @@ export class DomBreak {
     } as Node;
 
     if (this.options.customizeTextNode) {
-      var res = this.options.customizeTextNode(t, node)
+      // Avoid horrible recursive mess
+      var saveThisFunction = this.options.customizeTextNode;
+      delete this.options["customizeTextNode"];
+      var res = saveThisFunction(t, node)
+      this.options.customizeTextNode = saveThisFunction;
       if (res) { return res }
     }
     sp.attr("width", node.width);

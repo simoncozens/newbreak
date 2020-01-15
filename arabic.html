@@ -48,8 +48,6 @@ var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
    kashida.js library loaded above. */
 
 function makeItSwashy(node) {
-  var saveThisFunction = d.options.customizeTextNode;
-  delete d.options["customizeTextNode"];
   d.cacheComputedStretch = {};
   var nlalt = d.makeText(node.text.text(), $("#testbox2"))
   nlalt[0].text.attr("style", "font-feature-settings:swsh")
@@ -58,7 +56,6 @@ function makeItSwashy(node) {
   if (nlalt[0].width != node.width) {
     node.alternates = [nlalt[0]];
   }
-  d.options.customizeTextNode = saveThisFunction;
   return node;
 }
 
@@ -76,12 +73,6 @@ d.options.customizeTextNode = function(text, node) {
     return [makeItSwashy(node)]
   }
   var nodes = [];
-  // We have to put each chunk through the default dombreak nodemaker
-  // so that it can be measured. But the default dombreak nodemaker will
-  // call customizeTextNode (this function), so we would get an infinite
-  // loop. Avoid that by stowing and deleting this function temporarily.
-  var saveThisFunction = d.options.customizeTextNode;
-  delete d.options["customizeTextNode"];
   for (var c of chunks) {
     var nl = d.makeText(c.token, $("#testbox"))
     nl[0].stretch = 0
@@ -97,7 +88,6 @@ d.options.customizeTextNode = function(text, node) {
     }
 
   }
-  d.options.customizeTextNode = saveThisFunction;
   return nodes;
 }
 

@@ -35,7 +35,7 @@ function textWidth(text, elProto) {
     if (!fakeEl) {
         fakeEl = $("<span>").appendTo(document.body).hide();
     }
-    for (var _i = 0, _a = ["font-style", "font-variant", "font-weight", "font-size", "font-family", "font-stretch", "font-variation-settings"]; _i < _a.length; _i++) {
+    for (var _i = 0, _a = ["font-style", "font-variant", "font-weight", "font-size", "font-family", "font-stretch", "font-variation-settings", "font-feature-settings"]; _i < _a.length; _i++) {
         var c = _a[_i];
         fakeEl.css(c, elProto.css(c));
     }
@@ -164,7 +164,11 @@ var DomBreak = /** @class */ (function () {
             shrink: shrink
         };
         if (this.options.customizeTextNode) {
-            var res = this.options.customizeTextNode(t, node);
+            // Avoid horrible recursive mess
+            var saveThisFunction = this.options.customizeTextNode;
+            delete this.options["customizeTextNode"];
+            var res = saveThisFunction(t, node);
+            this.options.customizeTextNode = saveThisFunction;
             if (res) {
                 return res;
             }
