@@ -47,11 +47,33 @@ var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
 /* This is the code which breaks nodes into extensible chunks, using the
    kashida.js library loaded above. */
 
+function makeItSwashy(node) {
+  var saveThisFunction = d.options.customizeTextNode;
+  delete d.options["customizeTextNode"];
+  d.cacheComputedStretch = {};
+  var nlalt = d.makeText(node.text.text(), $("#testbox2"))
+  nlalt[0].text.attr("style", "font-feature-settings:swsh")
+  nlalt[0].text.addClass("swash")
+  nlalt[0].debugText = nlalt[0].debugText+"(swsh)"
+  if (nlalt[0].width != node.width) {
+    node.alternates = [nlalt[0]];
+  }
+  d.options.customizeTextNode = saveThisFunction;
+  return node;
+}
+
 d.options.customizeTextNode = function(text, node) {
   var chunks = applyKashidaRules(text);
   // Deal with easy case of single, non-extensible token.
   if (chunks.length == 1 && chunks[0].kashida == false ) {
     node.stretch = 0; node.shrink = 0; return [node];
+  }
+  var seenKash = false;
+  for (var cIx in chunks) {
+    if (chunks[cIx].kashida) { seenKash = true ; }
+  }
+  if(!seenKash) {
+    return [makeItSwashy(node)]
   }
   var nodes = [];
   // We have to put each chunk through the default dombreak nodemaker
@@ -62,17 +84,26 @@ d.options.customizeTextNode = function(text, node) {
   delete d.options["customizeTextNode"];
   for (var c of chunks) {
     var nl = d.makeText(c.token, $("#testbox"))
-    if (c.kashida == false) {
-      nl[0].stretch = 0
-      nl[0].shrink = 0
-    }
+    nl[0].stretch = 0
+    nl[0].shrink = 0
     nodes.push(nl[0])
+    makeItSwashy(nl[0])
+    if (c.kashida) {
+      var kash = d.makeText("ـ", $("#testbox"))
+      kash[0].stretchContribution = [ 0, 1 ]
+      kash[0].stretch = 35
+      kash[0].shrink= 0
+      nodes.push(kash[0])
+    }
+
   }
   d.options.customizeTextNode = saveThisFunction;
   return nodes;
 }
 
-window["fontSpy"]("Estedad-VF", {
+d.rebuild();
+
+window["fontSpy"]("Nassim Regular", {
   success: function() {
     d.rebuild()
   }
