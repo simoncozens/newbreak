@@ -410,12 +410,17 @@ export class DomBreak {
     var lines:Line[] = breaker.doBreak({fullJustify: this.options.fullJustify});
 
     domnode.find("br").remove()
+    domnode.children("span").remove()
+
+
     // Stretch and shrink each node as appropriate. We'll add linebreaks later.
     for (var l of lines) {
       for (var ix = 0; ix < l.nodes.length ; ix++) {
         var n = l.nodes[ix];
         var el = (n.text as JQuery<HTMLSpanElement>);
-        if (el.hasClass("text")) {
+        domnode.append(el)
+
+        if (el.hasClass("text") && (n.stretch > 0 || n.shrink > 0)) {
           // Text gets shrunk with the variable font CSS rule.
           this.setToWidth(el, l.targetWidths[ix]);
           el.css("letter-spacing", "normal");
@@ -436,7 +441,8 @@ export class DomBreak {
           el.css("width", l.targetWidths[ix]+"px")
         }
         if (ix == l.nodes.length-1) {
-          el.next().after($("<br>"));
+          // el.next().after($("<br>"));
+          domnode.append($("<br>"));
         }
       }
     }
