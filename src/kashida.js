@@ -80,18 +80,20 @@ function applyKashidaRules(s) {
     var stretchy = chunks[2]
     var post = chunks[3]
     if (needsJoiner(pre,stretchy)) {
-      pre = pre + zwj; stretchy = zwj + stretchy
+      pre = zwj + pre; stretchy = zwj + stretchy
     }
     if (needsJoiner(stretchy,post)) {
       // You would hope so...
-      stretchy = stretchy + zwj;
-      post = zwj + post
+      stretchy = zwj + stretchy + zwj;
+      post = zwj + post;
+      return (kashCache[s] = [
+        {'token': pre, 'kashida': false },
+        {'token': stretchy, 'kashida': true },
+        {'token': post, 'kashida': false },
+      ]);
+    } else {
+      return dontStretch;
     }
-    return (kashCache[s] = [
-      {'token': pre, 'kashida': false },
-      {'token': stretchy, 'kashida': true },
-      {'token': post, 'kashida': false },
-    ]);
   }
 
   chunks  = s.match(/([^\u0620-\u064A]*[\u0620-\u064A])/g)
