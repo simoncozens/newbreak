@@ -424,25 +424,27 @@ export class DomBreak {
         var el = (n.text as JQuery<HTMLSpanElement>);
         domnode.append(el)
 
-        if (el.hasClass("text") && (n.stretch > 0 || n.shrink > 0)) {
-          // Text gets shrunk with the variable font CSS rule.
-          this.setToWidth(el, l.targetWidths[ix]);
-          el.css("letter-spacing", "normal");
-          if (this.options.colorize) {
-            var stretchShrink = (n.width-l.targetWidths[ix]) / n.width
-            var color;
-            if (stretchShrink > 0) {
-              var redness = (stretchShrink * 4 * 255).toFixed(0);
-              color = "rgb("+redness+",0,0)"
-            } else {
-              var greenness = -(stretchShrink * 4 * 255).toFixed(0);
-              color = "rgb(0,"+greenness+",0)"
+        if (n.stretch > 0 || n.shrink > 0) {
+          if (el.hasClass("text")) {
+            // Text gets shrunk with the variable font CSS rule.
+            this.setToWidth(el, l.targetWidths[ix]);
+            el.css("letter-spacing", "normal");
+            if (this.options.colorize) {
+              var stretchShrink = (n.width-l.targetWidths[ix]) / n.width
+              var color;
+              if (stretchShrink > 0) {
+                var redness = (stretchShrink * 4 * 255).toFixed(0);
+                color = "rgb("+redness+",0,0)"
+              } else {
+                var greenness = -(stretchShrink * 4 * 255).toFixed(0);
+                color = "rgb(0,"+greenness+",0)"
+              }
+              el.css("color", color)
             }
-            el.css("color", color)
+          } else {
+            // Glue gets shrunk by setting its width directly.
+            el.css("width", l.targetWidths[ix]+"px")
           }
-        } else {
-          // Glue gets shrunk by setting its width directly.
-          el.css("width", l.targetWidths[ix]+"px")
         }
         if (ix == l.nodes.length-1) {
           // el.next().after($("<br>"));
