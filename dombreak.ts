@@ -385,7 +385,7 @@ export class DomBreak {
       var min = 0 // XXX
       var max = 200 // XXX
     } else {
-      var guess = width / el.width() * 1000
+      var guess = width / (0.001+el.width()) * 1000
       var min = 0 // XXX
       var max = 1000 // XXX
     }
