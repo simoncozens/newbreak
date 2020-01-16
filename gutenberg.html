@@ -35,7 +35,8 @@
 </div>
 
 <div id="testbox" style="font-family:'Gutenberg';" data-text-stretch="0" data-text-shrink="0" data-method="font-stretch">
-in principio creavit Deus caelum et terram. terra autem erat inanis et vacua et tenebrae super faciem abyssi et spiritus Dei ferebatur super aquas.
+in principio creavit Deus caelum et terram. terra autem erat inanis et vacua et tenebrae super faciem abyssi et spiritus Dei ferebatur super aquas. dixitque Deus fiat lux et facta est lux.
+et vidit Deus lucem quod esset bona et divisit lucem ac tenebras. appellavitque lucem diem et tenebras noctem factumque est vespere et mane dies unus.
 </div>
 
 <div id="testbox2" style="font-family:'Gutenberg';" class="dlig">
@@ -55,7 +56,7 @@ function makeItSwashy(node) {
   var nlalt = d.makeText(node.text.text(), $("#testbox2"))
   nlalt[0].text.addClass("dlig")
   nlalt[0].text.css("font-feature-settings", "dlig")
-  nlalt[0].substitutionPenalty = 0;
+  nlalt[0].substitutionPenalty = 1;
   if (nlalt[0].width != node.width) {
     node.alternates = [nlalt[0]];
   }
