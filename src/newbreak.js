@@ -223,6 +223,9 @@ var Linebreaker = /** @class */ (function () {
                 options: options
             };
             line.badness = this.badness(line);
+            if (seenAlternate) {
+                line = this.tryToImprove(line, target);
+            }
             // If we are at e.g. a hyphenation point (not breakable but has breakable
             // alternate) then only consider this is if the last node has become breakable
             // through considering the alternates
@@ -249,9 +252,6 @@ var Linebreaker = /** @class */ (function () {
                 // Remembering that "Breakpoint path = Breakpoint for first line
                 // + breakpoint path for remainder of paragraph", first we make
                 // a line set which holds the first line...
-                if (seenAlternate) {
-                    line = this.tryToImprove(line, target);
-                }
                 var newConsideration = {
                     totalBadness: badness,
                     lines: [line]
