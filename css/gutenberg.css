@@ -1,0 +1,20 @@
+@font-face {
+  font-family: "Gutenberg";
+  src: url("./1455_gutenberg_b42.otf")
+}
+
+.dlig {
+  font-feature-settings: "dlig";
+}
+
+div#testbox {
+  font-family: "Gutenberg"; line-height: 1.5em;
+  font-size: 34px;
+  width: 420px; border:2px solid #666; padding:5px;
+}
+
+
+div#testbox2 {
+  font-family: "Gutenberg"; line-height: 1.5em;
+  font-size: 34px;
+}

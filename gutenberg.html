@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="Test line breaking">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Test line breaking</title>
+        <link rel="stylesheet" href="css/base.css">
+        <link rel="stylesheet" href="css/gutenberg.css">
+        <link rel="author" href="humans.txt">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="src/jQuery-FontSpy.js"></script>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    </head>
+    <body>
+
+
+<div class="controls">
+<div class="slidecontainer">
+  <label>Maximum space stretch:</label>
+  <input type="range" min="0" max="500" value="150" class="slider" id="spaceStretch">
+  <span id="spaceStretchValue">1.5</span>
+</div>
+<div class="slidecontainer">
+  <label>Maximum space shrink:</label>
+  <input type="range" min="0" max="100" value="20" class="slider" id="spaceShrink">
+  <span id="spaceShrinkValue">0.20</span>
+</div>
+<div class="slidecontainer">
+  <label>Full Justification:</label>
+  <input type="checkbox" id="fulljustify">
+</div>
+
+</div>
+
+<div id="testbox" style="font-family:'Gutenberg';" data-text-stretch="0" data-text-shrink="0" data-method="font-stretch">
+in principio creavit Deus caelum et terram. terra autem erat inanis et vacua et tenebrae super faciem abyssi et spiritus Dei ferebatur super aquas.
+</div>
+
+<div id="testbox2" style="font-family:'Gutenberg';" class="dlig">
+</div>
+
+        <script src="src/bundle.js"></script>
+        <script>
+var box = $("#testbox")
+
+var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
+
+/* This is the code which breaks nodes into extensible chunks, using the
+   kashida.js library loaded above. */
+
+function makeItSwashy(node) {
+  d.cacheComputedStretch = {};
+  var nlalt = d.makeText(node.text.text(), $("#testbox2"))
+  nlalt[0].text.addClass("dlig")
+  nlalt[0].text.css("font-feature-settings", "dlig")
+  nlalt[0].substitutionPenalty = 0;
+  if (nlalt[0].width != node.width) {
+    node.alternates = [nlalt[0]];
+  }
+  return node;
+}
+
+d.options.customizeTextNode = function(text, node) {
+  return [makeItSwashy(node)];
+}
+
+d.rebuild();
+
+window["fontSpy"]("Gutenberg", {
+  success: function() {
+    d.rebuild()
+  }
+})
+
+$(".slidecontainer input").on("input", (e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  var v = (input.val()) / 100.0
+  $(`#${id}Value`).text(v);
+});
+
+$(".slidecontainer input").change((e) => {
+  var input = $(e.target);
+  var id = input[0].id;
+  if (id == "hyphenate") {
+    d.options.hyphenate = !!input.prop('checked');
+  } else if (id == "fulljustify") {
+    d.options.fullJustify = !!input.prop('checked');
+  } else {
+    var v = (input.val()) / 100.0
+    $(`#${id}Value`).text(v);
+    d.options[id] = v;
+  }
+  d.rebuild();
+})
+        </script>
+    </body>
+</html>
