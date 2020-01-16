@@ -75,12 +75,6 @@ interface Solution {
   totalBadness: number;
 }
 
-interface Ratio {
-  start: number;
-  end: number;
-  ratio: number;
-}
-
 interface BreakOptions {
   fullJustify?: boolean;
   start?: number;
@@ -115,7 +109,7 @@ export class Linebreaker {
  * be 50 units.
  **/
   constructor (nodes: Node[], hsize: number[]) {
-    this.nodes = []; this.hsize = hsize; this.breakpoints = []
+    this.nodes = []; this.hsize = hsize;
     for (var n of nodes) {
       this.nodes.push({...n})
     }
