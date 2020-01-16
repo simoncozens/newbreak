@@ -404,11 +404,12 @@ var Linebreaker = /** @class */ (function () {
         this.debug("Final widths:" + line.targetWidths.join(", "));
     };
     Linebreaker.prototype._cartesian_set = function (arg) {
+        console.log("Computing cartesian set for ", arg);
         var r = [];
         var max = arg.length - 1;
         var helper = function (arr, i) {
             for (var j = 0, l = arg[i].length; j < l; j++) {
-                var a = arr.slice();
+                var a = arr.slice(0);
                 a.push(arg[i][j]);
                 if (i == max)
                     r.push(a);
