@@ -49,7 +49,6 @@ var Linebreaker = /** @class */ (function () {
     function Linebreaker(nodes, hsize) {
         this.nodes = [];
         this.hsize = hsize;
-        this.breakpoints = [];
         for (var _i = 0, nodes_1 = nodes; _i < nodes_1.length; _i++) {
             var n = nodes_1[_i];
             this.nodes.push(__assign({}, n));
@@ -224,9 +223,6 @@ var Linebreaker = /** @class */ (function () {
                 options: options
             };
             line.badness = this.badness(line);
-            if (seenAlternate) {
-                line = this.tryToImprove(line, target);
-            }
             // If we are at e.g. a hyphenation point (not breakable but has breakable
             // alternate) then only consider this is if the last node has become breakable
             // through considering the alternates
@@ -253,6 +249,9 @@ var Linebreaker = /** @class */ (function () {
                 // Remembering that "Breakpoint path = Breakpoint for first line
                 // + breakpoint path for remainder of paragraph", first we make
                 // a line set which holds the first line...
+                if (seenAlternate) {
+                    line = this.tryToImprove(line, target);
+                }
                 var newConsideration = {
                     totalBadness: badness,
                     lines: [line]
@@ -404,7 +403,6 @@ var Linebreaker = /** @class */ (function () {
         this.debug("Final widths:" + line.targetWidths.join(", "));
     };
     Linebreaker.prototype._cartesian_set = function (arg) {
-        console.log("Computing cartesian set for ", arg);
         var r = [];
         var max = arg.length - 1;
         var helper = function (arr, i) {

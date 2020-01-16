@@ -299,7 +299,6 @@ var DomBreak = /** @class */ (function () {
             }
             else {
                 el.css("font-variation-settings", "'" + this.options.method + "' " + guess);
-                el.attr("font-variation-settings", "'" + this.options.method + "' " + guess);
             }
             var newWidth = el.width();
             if (Math.abs(newWidth - width) < 1) {
