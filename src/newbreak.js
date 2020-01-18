@@ -204,9 +204,9 @@ var Linebreaker = /** @class */ (function () {
             var lastLine = thisNode.originalIndex >= this.nodes[this.nodes.length - 1].originalIndex - 2;
             // If we're a long way from the end and stretching to get there would be horrible,
             // don't even bother investigating this breakpoint.
-            if ((curWidth / target < options.unacceptableRatio ||
-                curWidth / target > (2 - options.unacceptableRatio))
-                && !lastLine) {
+            // console.log("Width",curWidth, "Target:", target, "Ratio: ",curWidth/target, "Unacceptable: ",options.unacceptableRatio)
+            if ((curWidth / target < options.unacceptableRatio && !lastLine) ||
+                curWidth / target > (2 - options.unacceptableRatio)) {
                 this.debug(" Too far", lineNo);
                 addNodeToTotals(thisNode);
                 continue;
