@@ -1,54 +1,61 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var chai_1 = require("chai");
+var mocha_1 = require("mocha");
 var newbreak_1 = require("./newbreak");
-require("mocha");
-function makeNodeList(text) {
-    var rv = [];
-    for (var _i = 0, _a = text.split(/(\s+)/); _i < _a.length; _i++) {
-        var t = _a[_i];
-        if (t.match(/\s+/)) {
-            rv.push({ penalty: 0, breakable: true, width: 1, stretch: 1, shrink: 0.1, debugText: " " });
-        }
-        else {
-            rv.push({ text: t, penalty: 0, breakable: false, width: t.length, stretch: 0, shrink: 0 });
-        }
+function makeSomeStuff(count) {
+    var nodelist = [];
+    for (var i = 0; i < count; i++) {
+        var node = {
+            debugText: "laa" + i,
+            width: 100,
+            stretch: 0,
+            shrink: 0,
+            penalty: 0,
+            breakable: false
+        };
+        nodelist.push(node);
+        var glue = {
+            debugText: " ",
+            width: 10,
+            stretch: (i == count - 1 ? 1000000 : 15),
+            penalty: 0,
+            shrink: 3,
+            breakable: true
+        };
+        nodelist.push(glue);
     }
-    rv.push({ penalty: 0, breakable: true, width: 0, stretch: 1000, shrink: 0 });
-    console.log(rv);
-    return rv;
+    return nodelist;
 }
-describe('Line breaker: 012', function () {
-    var nodelist = makeNodeList("012");
-    it('Should return something sensible', function () {
-        var breaker = new newbreak_1.Linebreaker(nodelist, [7]);
-        var answer = breaker.doBreak();
-        chai_1.expect(answer.length).equals(1);
+function checkAllNonBreakablesReturned(nodelist, lines) {
+    var nonbreakablecount = nodelist.filter(function (x) { return !x.breakable; }).length;
+    var nodesout = 0;
+    for (var _i = 0, lines_1 = lines; _i < lines_1.length; _i++) {
+        var l = lines_1[_i];
+        nodesout += l.nodes.filter(function (x) { return !x.breakable; }).length;
+    }
+    mocha_1.it('should return all the nodes', function () {
+        chai_1.expect(nodesout).to.equal(nonbreakablecount);
     });
-});
-describe('Line breaker: 123456 789 012', function () {
-    var nodelist = makeNodeList("123456 789 012");
-    it('length 7 should split at 3', function () {
-        var breaker = new newbreak_1.Linebreaker(nodelist, [7]);
-        // breaker.debugging = true
-        var answer = breaker.doBreak();
-        chai_1.expect(answer.length).equals(2);
-        chai_1.expect(answer[0].nodes.length).equals(2);
-        chai_1.expect(answer[1].nodes.length).equals(4);
+}
+mocha_1.describe("Single line", function () {
+    var nodelist = makeSomeStuff(2);
+    var breaker = new newbreak_1.Linebreaker(nodelist, [220]);
+    var lines = breaker.doBreak({});
+    mocha_1.it('should have one line', function () {
+        chai_1.expect(lines.length).to.equal(1);
     });
+    checkAllNonBreakablesReturned(nodelist, lines);
 });
-// describe("Line breaker: HTML examples", () => {
-//   let nodelist = [
-//     {text: "abcdef", breakClass: 0, penalty: 0, width: 41.71195602416992, stretch: 0},
-//     {text: " ", penalty: 0, breakClass: 1, width: 3.913043975830078, stretch: 1},
-//     {text: "ghijkl", breakClass: 0, penalty: 0, width: 36.53532791137695, stretch: 0},
-//     {text: " ", penalty: 0, breakClass: 1, width: 3.913043975830078, stretch: 1},
-//   ] as Node[];
-//   it('length 42 should split at 1', () => {
-//     let breaker = new Linebreaker(nodelist, [42])
-//     breaker.debugging = true;
-//     let answer = breaker.doBreak()
-//     expect(answer).deep.equals([1,4])
-//   });
-// });
+mocha_1.describe("Two lines", function () {
+    var nodelist = makeSomeStuff(4);
+    console.log(nodelist);
+    var breaker = new newbreak_1.Linebreaker(nodelist, [220]);
+    var lines = breaker.doBreak({});
+    mocha_1.it('should have two lines', function () {
+        chai_1.expect(lines.length).to.equal(2);
+    });
+    console.log(lines);
+    checkAllNonBreakablesReturned(nodelist, lines);
+});
 //# sourceMappingURL=test.js.map

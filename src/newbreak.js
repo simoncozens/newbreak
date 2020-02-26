@@ -302,10 +302,10 @@ var Linebreaker = /** @class */ (function () {
         }
         else if (line.shortfall > 0) {
             // XXX use stretch/shrink penalties here instead
-            bad = Math.floor(100 * Math.pow((line.shortfall / line.totalStretch), 3));
+            bad = Math.floor(100 * Math.pow((line.shortfall / (0.001 + line.totalStretch)), 3));
         }
         else {
-            bad = Math.floor(100 * Math.pow((-line.shortfall / line.totalShrink), 3));
+            bad = Math.floor(100 * Math.pow((-line.shortfall / (0.001 + line.totalShrink)), 3));
         }
         // consider also penalties. Break penalty:
         bad += line.nodes[line.nodes.length - 1].penalty;
@@ -375,7 +375,7 @@ var Linebreaker = /** @class */ (function () {
                 if (thisLevelTotalStretch == 0) {
                     break;
                 }
-                var ratio = line.shortfall / thisLevelTotalStretch;
+                var ratio = line.shortfall / (0.001 + thisLevelTotalStretch);
                 if (ratio > 1) {
                     ratio = 1;
                 }
@@ -391,7 +391,7 @@ var Linebreaker = /** @class */ (function () {
                 if (thisLevelTotalShrink == 0) {
                     break;
                 }
-                var ratio = -line.shortfall / thisLevelTotalShrink;
+                var ratio = -line.shortfall / (0.001 + thisLevelTotalShrink);
                 if (ratio > 1) {
                     ratio = 1;
                 }

@@ -124,6 +124,7 @@ var DomBreak = /** @class */ (function () {
             text: b,
             breakable: true,
             penalty: -10000,
+            stretch: 0,
             width: 0,
         });
         return rv;
@@ -317,7 +318,10 @@ var DomBreak = /** @class */ (function () {
         var nodelist = this.nodelist;
         var domnode = this.domNode;
         var breaker = new newbreak_1.Linebreaker(nodelist, [domnode.width()]);
-        var lines = breaker.doBreak({ fullJustify: this.options.fullJustify });
+        var lines = breaker.doBreak({
+            fullJustify: this.options.fullJustify,
+            unacceptableRatio: (this.options.fullJustify ? 0.1 : 0.5)
+        });
         domnode.find("br").remove();
         domnode.children("span").remove();
         // Stretch and shrink each node as appropriate. We'll add linebreaks later.
