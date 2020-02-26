@@ -226,6 +226,7 @@ export class DomBreak {
       text: b,
       breakable: true,
       penalty: -10000,
+      stretch: 0,
       width: 0,
     } as Node)
     return rv;
@@ -411,8 +412,10 @@ export class DomBreak {
     var nodelist = this.nodelist;
     var domnode = this.domNode;
     var breaker = new Linebreaker(nodelist, [domnode.width()])
-    var lines:Line[] = breaker.doBreak({fullJustify: this.options.fullJustify});
-
+    var lines:Line[] = breaker.doBreak({
+      fullJustify: this.options.fullJustify,
+      unacceptableRatio: (this.options.fullJustify ? 0.1 : 0.5)
+    });
     domnode.find("br").remove()
     domnode.children("span").remove()
 
