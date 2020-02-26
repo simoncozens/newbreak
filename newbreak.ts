@@ -366,9 +366,9 @@ export class Linebreaker {
       bad = 0
     } else if (line.shortfall > 0) {
       // XXX use stretch/shrink penalties here instead
-      bad = Math.floor(100 * (line.shortfall/line.totalStretch)**3)
+      bad = Math.floor(100 * (line.shortfall/(0.001+line.totalStretch))**3)
     } else {
-      bad = Math.floor(100 * (-line.shortfall/line.totalShrink)**3)
+      bad = Math.floor(100 * (-line.shortfall/(0.001+line.totalShrink))**3)
     }
     // consider also penalties. Break penalty:
     bad += line.nodes[line.nodes.length-1].penalty
@@ -437,7 +437,7 @@ export class Linebreaker {
         var thisLevelTotalStretch = thisLevelStretch.reduce( (a,c) => a+c, 0); // Sum
         if (thisLevelTotalStretch == 0) { break; }
 
-        var ratio = line.shortfall / thisLevelTotalStretch;
+        var ratio = line.shortfall / (0.001+thisLevelTotalStretch);
         if (ratio > 1) { ratio = 1 }
 
         line.targetWidths = line.targetWidths.map( (w,ix) => w + ratio * thisLevelStretch[ix]);
@@ -450,7 +450,7 @@ export class Linebreaker {
         var thisLevelTotalShrink = thisLevelShrink.reduce( (a,c) => a+c, 0); // Sum
         if (thisLevelTotalShrink == 0) { break; }
 
-        var ratio = -line.shortfall / thisLevelTotalShrink;
+        var ratio = -line.shortfall / (0.001+thisLevelTotalShrink);
         if (ratio > 1) { ratio = 1 }
 
         line.targetWidths = line.targetWidths.map( (w,ix) => w - ratio * thisLevelShrink[ix]);
