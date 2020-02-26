@@ -21,6 +21,7 @@
   <select id="fontselect">
     <option name="Skia">Skia</option>
     <option name="Encode Sans" selected>Encode Sans</option>
+    <option name="Fit">Fit</option>
   </select>
 </div>
 <div class="slidecontainer">
@@ -82,6 +83,8 @@ var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
 
 function changeFont(font) {
   box.css("font-family", font)
+  box.removeClass()
+  box.addClass(font)
   window["fontSpy"](font, {
     success: function() {
       d.rebuild()

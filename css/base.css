@@ -25,9 +25,10 @@ small { color: #333; }
 span.glue { display: inline-block }
 div.nowrap { white-space: nowrap }
 div#testbox {
-  font-family: "Encode Sans", "Skia"; line-height: 1.2em;
+  font-family: "Encode Sans", "Skia"; line-height: 1.4em;
   font-size: 24px;
   width: 420px; border:2px solid #666; padding:5px;
 }
 
+#testbox.Fit { font-size: 90px !important; }
 label { display: inline-block; width: 170px; }
