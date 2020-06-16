@@ -93,7 +93,6 @@ const INF_BAD = 10000;
 export class Linebreaker {
   public nodes: Node[];
   public hsize: number[];
-  public breakpoints: number[];
   private memoizeCache: any;
   public debugging: boolean;
 
