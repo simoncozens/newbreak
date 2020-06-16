@@ -217,7 +217,7 @@ export class Linebreaker {
     }
 
     let relevant = this.nodes.slice(options.start, options.end+1);
-
+    var anyNegativePenalties = this.hasAnyNegativePenalties(relevant)
     // This represents how far along the line we are towards the target width.
     let curWidth = 0;
     let curStretch = 0;
@@ -285,7 +285,6 @@ export class Linebreaker {
       // through considering the alternates
       if (!thisNode.breakable && !(line.nodes[line.nodes.length-1].breakable)) {
         that.debug(`Adding width ${thisNode.width} for node ${thisNode.debugText||thisNode.text||""}`, lineNo)
-        curWidth += thisNode.width;
         addNodeToTotals(thisNode);
         continue;
       }
@@ -293,7 +292,6 @@ export class Linebreaker {
       let badness = line.badness;
       this.debug(` Badness was ${badness}`, lineNo)
 
-      var anyNegativePenalties = this.hasAnyNegativePenalties(relevant)
       if (bestBadness < badness && !anyNegativePenalties) {
         // We have a better option already, and we have no chance
         // to improve this option, don't bother.
