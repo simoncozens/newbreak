@@ -1,0 +1,12 @@
+[package]
+name = "newbreak"
+version = "0.1.0"
+authors = ["Simon Cozens <simon@simon-cozens.org>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]      # Creates dynamic lib
+
+[dependencies]
+libc = "0.2"
+
