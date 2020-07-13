@@ -430,13 +430,16 @@ export class DomBreak {
     }
   }
 
-  public layout() {
+  public layout(desiredWidth?) {
     var nodelist = this.nodelist;
     var domnode = this.domNode;
+    if (!desiredWidth) {
+      desiredWidth = domnode.width();
+    }
     var breaker = new Linebreaker(nodelist, [domnode.width()])
     var lines:Line[] = breaker.doBreak({
       fullJustify: this.options.fullJustify,
-      unacceptableRatio: (this.options.fullJustify ? 0.1 : 0.5)
+      unacceptableRatio: (this.options.fullJustify ? 0 : 0.5)
     });
     domnode.find("br").remove()
     domnode.children("span").remove()
@@ -447,6 +450,11 @@ export class DomBreak {
       for (var ix = 0; ix < l.nodes.length ; ix++) {
         var n = l.nodes[ix];
         var el = (n.text as JQuery<HTMLSpanElement>);
+        el.attr("width", n.width);
+        el.attr("desired-width", l.targetWidths[ix]);
+        el.attr("stretch", n.stretch);
+        el.attr("shrink", n.shrink);
+
         domnode.append(el)
 
         if (n.stretch > 0 || n.shrink > 0) {
