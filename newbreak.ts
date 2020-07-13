@@ -371,6 +371,10 @@ export class Linebreaker {
     bad += line.nodes[line.nodes.length-1].penalty
     // Line penalty
     bad += line.options.linePenalty
+    // Invert negative penalties
+    for (var n of line.nodes) {
+      if (n.penalty < 0) { bad += n.penalty * n.penalty; }
+    }
     // Any substitutions
     for (var n of line.nodes) {
       bad += n.substitutionPenalty || 0;

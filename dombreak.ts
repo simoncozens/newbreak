@@ -241,7 +241,7 @@ export class DomBreak {
       debugText: "<BR!>\n",
       text: b,
       breakable: true,
-      penalty: -10000,
+      penalty: -100000,
       stretch: 0,
       width: 0,
     } as Node)
