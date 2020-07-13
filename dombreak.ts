@@ -397,6 +397,7 @@ export class DomBreak {
 
   public setToWidth(el:JQuery<HTMLSpanElement>, width: number) {
     var tries = 20
+    // console.log(`Setting ${el.text()} to width ${width}, currently ${el.width()}`)
     if (this.options.method == "font-stretch") {
       var guess = width / el.width() * 100
       var min = 0 // XXX
@@ -412,7 +413,8 @@ export class DomBreak {
       } else {
         el.css("font-variation-settings", `'${this.options.method}' ${guess}`)
       }
-      var newWidth = el.width()
+      var newWidth = textWidth(el.text(), el)
+      // console.log(`Width is now ${newWidth}, desired is ${width}`)
       if (Math.abs(newWidth - width) < 1) {
         return;
       } else if (newWidth > width) {
@@ -421,6 +423,7 @@ export class DomBreak {
         min = guess
       }
       guess = (min + max) / 2
+      // console.log(`New guess is ${guess}`)
     }
   }
 
