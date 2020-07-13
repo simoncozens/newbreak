@@ -107,6 +107,13 @@ interface DomBreakOptions {
   */
   customNodeMaker?: (domnode: JQuery<HTMLElement>) => Node[]
 
+  /**
+  * @property {function} resizeMode
+  *  How the container node should be resized: "jquery-ui" uses jQuery UI
+  *  "resizable" method (which adds a handle for drag resizing). "resizeobserver"
+  * uses browser-native ResizeObserver and no UI.
+  */
+  resizeMode: string
 }
 
 var defaultOptions: DomBreakOptions = {
@@ -119,7 +126,8 @@ var defaultOptions: DomBreakOptions = {
   hyphenate: false,
   colorize: true,
   fullJustify: false,
-  method: "font-stretch"
+  method: "font-stretch",
+  resizeMode: "jquery-ui"
 }
 
 declare var Hyphenator: any;
@@ -145,6 +153,7 @@ export class DomBreak {
   public cacheComputedShrink = {}
   public cacheComputedStretch = {}
   public cacheSpaceWidth = -1;
+  public doneResizeObserver = false;
 
   constructor (domnode: JQuery<HTMLElement>, options: DomBreakOptions) {
     this.options = {...defaultOptions,...options};
@@ -172,13 +181,20 @@ export class DomBreak {
     this.cacheComputedShrink = {};
     this.nodelist = this.DOMToNodes(this.domNode, this.origContents);
     let doResize = (evt, ui) => { this.layout() }
-    if (this.domNode.resizable( "instance" )) {
-      this.domNode.resizable("destroy");
+    if (this.options.resizeMode == "jquery-ui") {
+      if (this.domNode.resizable( "instance" )) {
+        this.domNode.resizable("destroy");
+      }
+      setTimeout(() => {
+        this.domNode.resizable({resize: doResize });
+        doResize(null,null);
+      },0.1);
+    } else if (this.options.resizeMode == "resizeobserver" && ! this.doneResizeObserver) {
+      let ro = new ResizeObserver(doResize)
+      ro.observe(this.domNode[0])
+      console.log("Observing", this.domNode[0])
+      this.doneResizeObserver = true;
     }
-    setTimeout(() => {
-      this.domNode.resizable({resize: doResize });
-      doResize(null,null);
-    },0.1);
   }
 
   public makeGlue(domnode) : Node {
