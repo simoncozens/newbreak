@@ -1,12 +1,25 @@
 @font-face {
-  font-family: "Estedad-VF";
-  src: url("./Estedad-VF.woff2")
+  font-family: "XNassimGX";
+  src: url("./XNassimGX.ttf")
+}
+
+@font-face {
+  font-family: "NNU-VF";
+  src: url("./NotoNastaliqUrdu-VF.ttf")
 }
 
 
-div#testbox {
-  font-family: "Estedad-VF"; line-height: 1.5em;
+
+div#testbox, div#testbox2 {
+  font-family: "NNU-VF"; line-height: 1.5em;
   font-size: 34px;
-  width: 420px; border:2px solid #666; padding:5px;
+  width: 420px;
 }
 
+div#testbox2 {
+  font-feature-settings: "swsh";
+}
+
+.swash {
+  font-feature-settings: "swsh";
+}

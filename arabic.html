@@ -5,7 +5,7 @@
         <meta name="description" content="Test line breaking">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Test line breaking</title>
-        <link rel="stylesheet" href="css/base.css">
+        <link rel="stylesheet" href="css/poetry.css">
         <link rel="stylesheet" href="css/arabic.css">
         <link rel="author" href="humans.txt">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -15,109 +15,98 @@
     </head>
     <body>
 
-
-<div class="controls">
-<div class="slidecontainer">
-  <label>Maximum space stretch:</label>
-  <input type="range" min="0" max="500" value="150" class="slider" id="spaceStretch">
-  <span id="spaceStretchValue">1.5</span>
+<div id="flexwrapper">
+<div id="poetry">صومعهٔ عیسیست خوان اهل دل
+هان و هان ای مبتلا این در مهل
+جمع گشتندی ز هر اطراف خلق
+از ضریر و لنگ و شل و اهل دلق
+بر در آن صومعهٔ عیسی صباح
+تا بدم اوشان رهاند از جناح
+او چو فارغ گشتی از اوراد خویش
+چاشتگه بیرون شدی آن خوب‌کیش
+جوق جوقی مبتلا دیدی نزار
+شسته بر در در امید و انتظار
+گفتی ای اصحاب آفت از خدا
+حاجت این جملگانتان شد روا
+هین روان گردید بی رنج و عنا
+سوی غفاری و اکرام خدا
+جملگان چون اشتران بسته‌پای
+که گشایی زانوی ایشان برای
+خوش دوان و شادمانه سوی خان
+از دعای او شدندی پا دوان</div>
+<div id="leftcol" style="direction:rtl;font-family:'NNU-VF'" data-text-stretch="computed" data-text-shrink="0" data-method="GEXT">
 </div>
-<div class="slidecontainer">
-  <label>Maximum space shrink:</label>
-  <input type="range" min="0" max="100" value="20" class="slider" id="spaceShrink">
-  <span id="spaceShrinkValue">0.20</span>
+<div id="rightcol" style="direction:rtl;font-family:'NNU-VF'" data-text-stretch="computed" data-text-shrink="0" data-method="GEXT">
 </div>
-<div class="slidecontainer">
-  <label>Full Justification:</label>
-  <input type="checkbox" id="fulljustify">
-</div>
-
-</div>
-
-<div id="testbox" style="font:Estedad-VF; direction:rtl" data-text-stretch="computed" data-text-shrink="0" data-method="wdth">
-فِي الْبَدْءِ كَانَ الْكَلِمَةُ وَالْكَلِمَةُ كَانَ عِنْدَ اللَّهِ وَكَانَ الْكَلِمَةُ اللَّهَ.  هَذَا كَانَ فِي الْبَدْءِ عِنْدَ اللَّهِ. كُلُّ شَيْءٍ بِهِ كَانَ وَبِغَيْرِهِ لَمْ يَكُنْ شَيْءٌ مِمَّا كَانَ. فِيهِ كَانَتِ الْحَيَاةُ وَالْحَيَاةُ كَانَتْ نُورَ النَّاسِ وَالنُّورُ يُضِيءُ فِي الظُّلْمَةِ وَالظُّلْمَةُ لَمْ تُدْرِكْهُ.  </div>
-
-        <script src="src/kashida.js"></script>
         <script src="src/bundle.js"></script>
         <script>
-var box = $("#testbox")
 
-var d = new DomBreak.DomBreak(box, {textLetterSpacingPriority: 0});
-
-/* This is the code which breaks nodes into extensible chunks, using the
-   kashida.js library loaded above. */
-
-function makeItSwashy(node) {
-  d.cacheComputedStretch = {};
-  var nlalt = d.makeText(node.text.text(), $("#testbox2"))
-  nlalt[0].text.addClass("swash")
-  nlalt[0].text.css("font-feature-settings", "swsh")
-  if (nlalt[0].width != node.width) {
-    node.alternates = [nlalt[0]];
+var right = true;
+for (var line of $("#poetry").text().split("\n")) {
+  var target = right ? $("#rightcol") : $("#leftcol");
+  if (line.length > 0) {
+    console.log(line)
+    target.append(line);
+    target.append($("<br>"));
   }
-  return node;
+  var right = !right;
 }
+$("#poetry").empty();
 
-d.options.customizeTextNode = function(text, node) {
-  var chunks = applyKashidaRules(text);
-  // Deal with easy case of single, non-extensible token.
-  if (chunks.length == 1 && chunks[0].kashida == false ) {
-    node.stretch = 0; node.shrink = 0; return [makeItSwashy(node)];
+var box = $("#leftcol")
+var gluemaker = function(domnode) {
+    var sp = $("<span/>")
+    sp.addClass("glue")
+    sp.width(this.cacheSpaceWidth)
+    return {
+      text: sp,
+      debugText: " ",
+      penalty: 0,
+      stretchContribution: [0.5,0.5],
+      shrinkContribution: [1,0],
+      breakable: true,
+      width: sp.width(),
+      stretch: this.options.spaceStretch * sp.width(),
+      shrink:  this.options.spaceShrink  * sp.width()
+    };
   }
-  var seenKash = false;
-  for (var cIx in chunks) {
-    if (chunks[cIx].kashida) { seenKash = true ; }
-  }
-  if(!seenKash) {
-    return [makeItSwashy(node)]
-  }
-  var nodes = [];
-  for (var c of chunks) {
-    var nl = d.makeText(c.token, $("#testbox"))
-    nl[0].stretch = 0
-    nl[0].shrink = 0
-    nodes.push(nl[0])
-    makeItSwashy(nl[0])
-    if (c.kashida) {
-      var kash = d.makeText("ـ", $("#testbox"))
-      kash[0].stretchContribution = [ 0, 1 ]
-      kash[0].stretch = 35
-      kash[0].shrink= 0
-      nodes.push(kash[0])
-    }
+var dombreakOptions = {fullJustify: true,
+  unacceptableRatio:0.001,
+  spaceStretch: 20,
+  spaceShrink: 1,
+  colorize:false,
+  customizeTextNode:function(t, node) {
+    node.stretchContribution=[1,0];
+  },
+  resizeMode: "manual"
+};
 
-  }
-  return nodes;
-}
+var d = new DomBreak.DomBreak($("#leftcol"), dombreakOptions );
+d.makeGlue = gluemaker
 
-d.rebuild();
+var d2 = new DomBreak.DomBreak($("#rightcol"), dombreakOptions );
+d2.makeGlue = gluemaker
 
-window["fontSpy"]("Nassim Regular", {
-  success: function() {
-    d.rebuild()
-  }
+let ro = new ResizeObserver(function() {
+  console.log("Resized")
+  halfwidth = $("#flexwrapper").width()/2;
+  $("#leftcol").width(halfwidth)
+  $("#rightcol").width(halfwidth)
+  d.layout()
+  d2.layout()
 })
+ro.observe($("#flexwrapper")[0])
 
-$(".slidecontainer input").on("input", (e) => {
-  var input = $(e.target);
-  var id = input[0].id;
-  var v = (input.val()) / 100.0
-  $(`#${id}Value`).text(v);
-});
-
-$(".slidecontainer input").change((e) => {
-  var input = $(e.target);
-  var id = input[0].id;
-  if (id == "hyphenate") {
-    d.options.hyphenate = !!input.prop('checked');
-  } else if (id == "fulljustify") {
-    d.options.fullJustify = !!input.prop('checked');
-  } else {
-    var v = (input.val()) / 100.0
-    $(`#${id}Value`).text(v);
-    d.options[id] = v;
+window["fontSpy"]("NNU-VF", {
+  testString: "سبھ",
+  success: function() {
+    console.log("Rebuilding")
+    d.rebuild()
+    d2.rebuild()
+  },
+  failure: function() {
+    console.log("Failed")
   }
-  d.rebuild();
 })
         </script>
     </body>
