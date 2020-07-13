@@ -170,6 +170,7 @@ var Linebreaker = /** @class */ (function () {
             return this.memoizeCache[key];
         }
         var relevant = this.nodes.slice(options.start, options.end + 1);
+        var anyNegativePenalties = this.hasAnyNegativePenalties(relevant);
         // This represents how far along the line we are towards the target width.
         var curWidth = 0;
         var curStretch = 0;
@@ -231,13 +232,11 @@ var Linebreaker = /** @class */ (function () {
             // through considering the alternates
             if (!thisNode.breakable && !(line.nodes[line.nodes.length - 1].breakable)) {
                 that.debug("Adding width " + thisNode.width + " for node " + (thisNode.debugText || thisNode.text || ""), lineNo);
-                curWidth += thisNode.width;
                 addNodeToTotals(thisNode);
                 continue;
             }
             var badness = line.badness;
             this.debug(" Badness was " + badness, lineNo);
-            var anyNegativePenalties = this.hasAnyNegativePenalties(relevant);
             if (bestBadness < badness && !anyNegativePenalties) {
                 // We have a better option already, and we have no chance
                 // to improve this option, don't bother.
@@ -311,9 +310,16 @@ var Linebreaker = /** @class */ (function () {
         bad += line.nodes[line.nodes.length - 1].penalty;
         // Line penalty
         bad += line.options.linePenalty;
-        // Any substitutions
+        // Invert negative penalties
         for (var _i = 0, _a = line.nodes; _i < _a.length; _i++) {
             var n = _a[_i];
+            if (n.penalty < 0) {
+                bad += n.penalty * n.penalty;
+            }
+        }
+        // Any substitutions
+        for (var _b = 0, _c = line.nodes; _b < _c.length; _b++) {
+            var n = _c[_b];
             bad += n.substitutionPenalty || 0;
         }
         return bad;

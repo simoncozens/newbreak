@@ -10628,7 +10628,8 @@ var defaultOptions = {
     hyphenate: false,
     colorize: true,
     fullJustify: false,
-    method: "font-stretch"
+    method: "font-stretch",
+    resizeMode: "jquery-ui"
 };
 // Crappy function to measure the width of a bit of text.
 var fakeEl;
@@ -10650,6 +10651,7 @@ var DomBreak = /** @class */ (function () {
         this.cacheComputedShrink = {};
         this.cacheComputedStretch = {};
         this.cacheSpaceWidth = -1;
+        this.doneResizeObserver = false;
         this.options = __assign({}, defaultOptions, options);
         this.domNode = domnode;
         if (domnode[0].hasAttribute("data-text-stretch")) {
@@ -10675,13 +10677,21 @@ var DomBreak = /** @class */ (function () {
         this.cacheComputedShrink = {};
         this.nodelist = this.DOMToNodes(this.domNode, this.origContents);
         var doResize = function (evt, ui) { _this.layout(); };
-        if (this.domNode.resizable("instance")) {
-            this.domNode.resizable("destroy");
+        if (this.options.resizeMode == "jquery-ui") {
+            if (this.domNode.resizable("instance")) {
+                this.domNode.resizable("destroy");
+            }
+            setTimeout(function () {
+                _this.domNode.resizable({ resize: doResize });
+                doResize(null, null);
+            }, 0.1);
         }
-        setTimeout(function () {
-            _this.domNode.resizable({ resize: doResize });
-            doResize(null, null);
-        }, 0.1);
+        else if (this.options.resizeMode == "resizeobserver" && !this.doneResizeObserver) {
+            var ro = new ResizeObserver(doResize);
+            ro.observe(this.domNode[0]);
+            console.log("Observing", this.domNode[0]);
+            this.doneResizeObserver = true;
+        }
     };
     DomBreak.prototype.makeGlue = function (domnode) {
         var sp = $("<span/>");
@@ -10724,7 +10734,7 @@ var DomBreak = /** @class */ (function () {
             debugText: "<BR!>\n",
             text: b,
             breakable: true,
-            penalty: -10000,
+            penalty: -100000,
             stretch: 0,
             width: 0,
         });
@@ -10885,6 +10895,7 @@ var DomBreak = /** @class */ (function () {
     };
     DomBreak.prototype.setToWidth = function (el, width) {
         var tries = 20;
+        // console.log(`Setting ${el.text()} to width ${width}, currently ${el.width()}`)
         if (this.options.method == "font-stretch") {
             var guess = width / el.width() * 100;
             var min = 0; // XXX
@@ -10895,6 +10906,9 @@ var DomBreak = /** @class */ (function () {
             var min = 0; // XXX
             var max = 1000; // XXX
         }
+        if (Math.abs(el.width() - width) < 1) {
+            return;
+        }
         while (tries--) {
             if (this.options.method == "font-stretch") {
                 el.css("font-stretch", guess + "%");
@@ -10902,7 +10916,8 @@ var DomBreak = /** @class */ (function () {
             else {
                 el.css("font-variation-settings", "'" + this.options.method + "' " + guess);
             }
-            var newWidth = el.width();
+            var newWidth = textWidth(el.text(), el);
+            // console.log(`Width is now ${newWidth}, desired is ${width}`)
             if (Math.abs(newWidth - width) < 1) {
                 return;
             }
@@ -10913,15 +10928,19 @@ var DomBreak = /** @class */ (function () {
                 min = guess;
             }
             guess = (min + max) / 2;
+            // console.log(`New guess is ${guess}`)
         }
     };
-    DomBreak.prototype.layout = function () {
+    DomBreak.prototype.layout = function (desiredWidth) {
         var nodelist = this.nodelist;
         var domnode = this.domNode;
+        if (!desiredWidth) {
+            desiredWidth = domnode.width();
+        }
         var breaker = new newbreak_1.Linebreaker(nodelist, [domnode.width()]);
         var lines = breaker.doBreak({
             fullJustify: this.options.fullJustify,
-            unacceptableRatio: (this.options.fullJustify ? 0.1 : 0.5)
+            unacceptableRatio: (this.options.fullJustify ? 0 : 0.5)
         });
         domnode.find("br").remove();
         domnode.children("span").remove();
@@ -10931,6 +10950,10 @@ var DomBreak = /** @class */ (function () {
             for (var ix = 0; ix < l.nodes.length; ix++) {
                 var n = l.nodes[ix];
                 var el = n.text;
+                el.attr("width", n.width);
+                el.attr("desired-width", l.targetWidths[ix]);
+                el.attr("stretch", n.stretch);
+                el.attr("shrink", n.shrink);
                 domnode.append(el);
                 if (n.stretch > 0 || n.shrink > 0) {
                     if (el.hasClass("text")) {
@@ -11140,6 +11163,7 @@ var Linebreaker = /** @class */ (function () {
             return this.memoizeCache[key];
         }
         var relevant = this.nodes.slice(options.start, options.end + 1);
+        var anyNegativePenalties = this.hasAnyNegativePenalties(relevant);
         // This represents how far along the line we are towards the target width.
         var curWidth = 0;
         var curStretch = 0;
@@ -11201,13 +11225,11 @@ var Linebreaker = /** @class */ (function () {
             // through considering the alternates
             if (!thisNode.breakable && !(line.nodes[line.nodes.length - 1].breakable)) {
                 that.debug("Adding width " + thisNode.width + " for node " + (thisNode.debugText || thisNode.text || ""), lineNo);
-                curWidth += thisNode.width;
                 addNodeToTotals(thisNode);
                 continue;
             }
             var badness = line.badness;
             this.debug(" Badness was " + badness, lineNo);
-            var anyNegativePenalties = this.hasAnyNegativePenalties(relevant);
             if (bestBadness < badness && !anyNegativePenalties) {
                 // We have a better option already, and we have no chance
                 // to improve this option, don't bother.
@@ -11281,9 +11303,16 @@ var Linebreaker = /** @class */ (function () {
         bad += line.nodes[line.nodes.length - 1].penalty;
         // Line penalty
         bad += line.options.linePenalty;
-        // Any substitutions
+        // Invert negative penalties
         for (var _i = 0, _a = line.nodes; _i < _a.length; _i++) {
             var n = _a[_i];
+            if (n.penalty < 0) {
+                bad += n.penalty * n.penalty;
+            }
+        }
+        // Any substitutions
+        for (var _b = 0, _c = line.nodes; _b < _c.length; _b++) {
+            var n = _c[_b];
             bad += n.substitutionPenalty || 0;
         }
         return bad;
