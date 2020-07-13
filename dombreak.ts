@@ -407,6 +407,9 @@ export class DomBreak {
       var min = 0 // XXX
       var max = 1000 // XXX
     }
+    if (Math.abs(el.width() - width) < 1) {
+        return;
+    }
     while (tries--) {
       if (this.options.method == "font-stretch") {
         el.css("font-stretch", guess+"%")
